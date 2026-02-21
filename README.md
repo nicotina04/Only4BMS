@@ -46,11 +46,8 @@ Format: Be-Music Script (.bms, .bme, .bml)
      ```
 
 
-<section class="main-content">
-  <a href="https://github.com/minwook-shin/Only4BMS/releases/download/latest/Only4BMS-Win.exe" class="btn">Download for Windows</a>
-  <a href="https://github.com/minwook-shin/Only4BMS/releases/download/latest/Only4BMS-Mac" class="btn">Download for macOS</a>
-  <a href="https://minwook-shin.itch.io/only4bms" class="btn">Play on itch.io</a>
-</section>
+<a href="https://minwook-shin.itch.io/only4bms" class="btn">Play on itch.io</a>
+
 
 ## Transparency Statement:
 
