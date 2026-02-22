@@ -17,14 +17,14 @@ jobs:
             artifact_name: Only4BMS-Windows
             asset_name: Only4BMS-Win.exe
             executable_path: dist/Only4BMS.exe
-          - os: macos-latest
-            artifact_name: Only4BMS-AppleSilicon
-            asset_name: Only4BMS-Mac-ARM
-            executable_path: dist/Only4BMS
-          - os: macos-15-intel
-            artifact_name: Only4BMS-IntelMac
-            asset_name: Only4BMS-Mac-Intel
-            executable_path: dist/Only4BMS
+          # - os: macos-latest
+          #   artifact_name: Only4BMS-AppleSilicon
+          #   asset_name: Only4BMS-Mac-ARM
+          #   executable_path: dist/Only4BMS
+          # - os: macos-15-intel
+          #   artifact_name: Only4BMS-IntelMac
+          #   asset_name: Only4BMS-Mac-Intel
+          #   executable_path: dist/Only4BMS
 
     steps:
       - uses: actions/checkout@v4

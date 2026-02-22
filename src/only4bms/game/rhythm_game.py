@@ -10,7 +10,7 @@ from .engine import GameEngine
 from .renderer import GameRenderer
 
 class RhythmGame:
-    def __init__(self, notes, bgms, bgas, wav_map, bmp_map, title, settings, mode='single', metadata=None, renderer=None, window=None, ai_difficulty='normal'):
+    def __init__(self, notes, bgms, bgas, wav_map, bmp_map, title, settings, visual_timing_map=None, mode='single', metadata=None, renderer=None, window=None, ai_difficulty='normal'):
         self.mode = mode
         self.ai_difficulty = ai_difficulty
         self.renderer = renderer
@@ -43,13 +43,13 @@ class RhythmGame:
 
         # Engines
         max_time = max((n['time_ms'] for n in notes), default=0)
-        self.engine = GameEngine(notes, bgms, bgas, self.hw_mult, self._play_sound, self.set_judgment, max_time)
+        self.engine = GameEngine(notes, bgms, bgas, self.hw_mult, self._play_sound, self.set_judgment, max_time, visual_timing_map)
         
         if self.mode == 'ai_multi':
             from ..ai.inference import RhythmInference
             self.ai_model = RhythmInference(self.ai_difficulty)
             self.ai_notes = copy.deepcopy(notes)
-            self.ai_engine = GameEngine(self.ai_notes, [], [], self.hw_mult, lambda s: None, self.set_ai_judgment, max_time)
+            self.ai_engine = GameEngine(self.ai_notes, [], [], self.hw_mult, lambda s: None, self.set_ai_judgment, max_time, visual_timing_map)
             self.ai_lane_pressed = [False] * NUM_LANES
 
         # Presentation
@@ -62,6 +62,7 @@ class RhythmGame:
         self.state = "PLAYING" # PLAYING, PAUSED, COUNTDOWN, RESULT
         self.paused_at = 0
         self.countdown_start = 0
+        self.frame_count = 0
         
         self.judgments = {k: 0 for k in JUDGMENT_ORDER}
         self.combo = 0
@@ -124,7 +125,10 @@ class RhythmGame:
                     self.engine.process_hit(i, t)
         elif event.type == pygame.KEYUP:
             for i, k in enumerate(self.keys):
-                if event.key == k: self.lane_pressed[i] = False
+                if event.key == k:
+                    self.lane_pressed[i] = False
+                    t = (time.perf_counter() - self.start_time) * 1000.0
+                    self.engine.process_release(i, t)
 
     def _pause(self):
         self.paused_at = time.perf_counter()
@@ -152,6 +156,19 @@ class RhythmGame:
                 now = (time.perf_counter() - self.start_time) * 1000.0
                 if self.mode == 'ai_multi': self._update_ai(now)
                 if self.engine.update(now): self.state = "RESULT"
+                
+                # Continuous LN Effects (spawn every 4 frames for better consistency)
+                self.frame_count += 1
+                if self.frame_count % 4 == 0:
+                    for lane, note in enumerate(self.engine.held_lns):
+                        if note:
+                            # Use a slightly smaller radius for continuous sparks
+                            self.effects.append({'lane': lane, 'radius': 22, 'color': (0, 255, 255), 'alpha': 160})
+                    if self.mode == 'ai_multi':
+                        for lane, note in enumerate(self.ai_engine.held_lns):
+                            if note:
+                                self.ai_effects.append({'lane': lane, 'radius': 22, 'color': (0, 255, 255), 'alpha': 160})
+
                 self._draw(now)
             elif self.state == "PAUSED": self._draw_paused()
             elif self.state == "COUNTDOWN": self._draw_countdown()
@@ -210,14 +227,16 @@ class RhythmGame:
                 'lane_x': self.lane_x, 'notes': self.engine.notes, 'lane_pressed': self.lane_pressed,
                 'judgments': self.judgments, 'combo': self.combo, 'judgment_text': self.judgment_text,
                 'judgment_color': self.judgment_color, 'judgment_timer': self.judgment_timer,
-                'lane_total_w': self.lane_total_w, 'speed': self.speed, 'hw_mult': self.hw_mult
+                'lane_total_w': self.lane_total_w, 'speed': self.speed, 'hw_mult': self.hw_mult,
+                'held_lns': self.engine.held_lns, 'current_visual_time': self.engine.current_visual_time
             }
         else:
             return {
                 'lane_x': self.p2_lane_x, 'notes': self.ai_notes, 'lane_pressed': self.ai_lane_pressed,
                 'judgments': self.ai_judgments, 'combo': self.ai_combo, 'judgment_text': self.ai_judgment_text,
                 'judgment_color': self.ai_judgment_color, 'judgment_timer': self.ai_judgment_timer,
-                'lane_total_w': self.lane_total_w, 'speed': self.speed, 'hw_mult': self.hw_mult
+                'lane_total_w': self.lane_total_w, 'speed': self.speed, 'hw_mult': self.hw_mult,
+                'held_lns': self.ai_engine.held_lns, 'current_visual_time': self.ai_engine.current_visual_time
             }
 
     def _draw_paused(self):

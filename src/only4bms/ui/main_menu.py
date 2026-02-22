@@ -36,6 +36,10 @@ class MainMenu:
         self.selected_index = 0
         self.running = True
         self.action = "QUIT"
+        
+        # Input debouncing: Ignore ENTER/SPACE until released if already pressed
+        self.ignore_confirm = pygame.key.get_pressed()[pygame.K_RETURN] or \
+                              pygame.key.get_pressed()[pygame.K_SPACE]
 
     def _s(self, v):
         return max(1, int(v * self.sy))
@@ -46,6 +50,8 @@ class MainMenu:
     def run(self):
         from pygame._sdl2.video import Texture
         pygame.key.set_repeat(300, 50)
+        # Clear events that accumulated during initialization/transition
+        pygame.event.clear()
         while self.running:
             self._handle_events()
             self._draw()
@@ -69,14 +75,18 @@ class MainMenu:
             if event.type == pygame.QUIT:
                 self.action = "QUIT"
                 self.running = False
+            elif event.type == pygame.KEYUP:
+                if event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                    self.ignore_confirm = False
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
                     self.selected_index = (self.selected_index - 1) % len(self.options)
                 elif event.key == pygame.K_DOWN:
                     self.selected_index = (self.selected_index + 1) % len(self.options)
                 elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                    self.action = self.options[self.selected_index][1]
-                    self.running = False
+                    if not self.ignore_confirm:
+                        self.action = self.options[self.selected_index][1]
+                        self.running = False
                 elif event.key == pygame.K_ESCAPE:
                     self.action = "QUIT"
                     self.running = False
