@@ -72,6 +72,9 @@ class SongSelectMenu:
         self._nav_buttons = []
         self._quit_buttons = []
 
+        # Input debouncing: Ignore ENTER until it's released if it was already pressed
+        self.ignore_enter = pygame.key.get_pressed()[pygame.K_RETURN]
+
         self.scan_songs()
 
     def _s(self, v):
@@ -139,6 +142,8 @@ class SongSelectMenu:
     def run(self):
         from pygame._sdl2.video import Texture
         pygame.key.set_repeat(300, 50)
+        # Scan songs can take time; clear accumulated Enter repeats here
+        pygame.event.clear()
         while self.running:
             self._handle_events()
             self._draw()
@@ -164,6 +169,9 @@ class SongSelectMenu:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
+            elif event.type == pygame.KEYUP:
+                if event.key == pygame.K_RETURN:
+                    self.ignore_enter = False
             elif event.type == pygame.KEYDOWN:
                 if self.show_quit_confirm:
                     if event.key in (pygame.K_y, pygame.K_RETURN):
@@ -206,7 +214,8 @@ class SongSelectMenu:
         elif key == pygame.K_DOWN:
             self._move_selection(+1)
         elif key == pygame.K_RETURN:
-            self._select_play()
+            if not self.ignore_enter:
+                self._select_play()
         elif key == pygame.K_ESCAPE:
             self.show_quit_confirm = True
         elif key == pygame.K_TAB:

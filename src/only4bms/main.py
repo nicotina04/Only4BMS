@@ -145,7 +145,7 @@ def main():
                     # Inlined _play_song logic with new RhythmGame instantiation
                     print(f"Loading {selected_song}...")
                     parser = BMSParser(selected_song)
-                    notes, bgms, bgas, bmp_map = parser.parse()
+                    notes, bgms, bgas, bmp_map, visual_timing_map = parser.parse()
 
                     if not notes and not bgms:
                         print("No notes or bgm parsed from file.")
@@ -159,10 +159,11 @@ def main():
                         "notes": parser.total_notes,
                         "stagefile": parser.stagefile,
                         "banner": parser.banner,
+                        "total": parser.total,
                     }
                     game = RhythmGame(
                         notes, bgms, bgas, parser.wav_map, bmp_map,
-                        parser.title, settings, mode=mode, metadata=metadata,
+                        parser.title, settings, visual_timing_map=visual_timing_map, mode=mode, metadata=metadata,
                         renderer=renderer, window=window,
                         ai_difficulty=ai_difficulty # New argument
                     )

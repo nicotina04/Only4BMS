@@ -51,6 +51,7 @@ class GameRenderer:
         ltw = game_state['lane_total_w']
         spd = game_state['speed']
         hw = game_state['hw_mult']
+        current_visual_time = game_state.get('current_visual_time', current_time)
         lane_w = lx[1] - lx[0] if len(lx) > 1 else self._sx(75)
         note_h = self._s(NOTE_H)
         hit_y = self._s(HIT_Y)
@@ -91,15 +92,45 @@ class GameRenderer:
             self.offscreen_hud.blit(cs, cs.get_rect(center=(lx[0] + ltw // 2, self.height // 2 + self._s(20))))
 
         # Notes
+        held_ln_ids = [id(n) for n in game_state.get('held_lns', []) if n is not None]
         for note in notes:
-            if 'hit' not in note and 'miss' not in note:
-                td = note['time_ms'] - current_time
+            is_hit = 'hit' in note
+            is_miss = 'miss' in note
+            is_held = id(note) in held_ln_ids
+            
+            # Draw if not missed AND (not hit OR is currently being held)
+            if not is_miss and (not is_hit or is_held):
+                # Use visual time for distance calculation (supports variable speed)
+                td = note.get('visual_time_ms', note['time_ms']) - current_visual_time
                 y = (hit_y - note_h) - td * spd
+                
+                # If held, pin the head to the hit line
+                if is_held:
+                    y = hit_y - note_h
+
                 if -note_h <= y <= self.height:
-                    color = (0, 255, 255) if len(note['sample_ids']) == 1 else (200, 255, 255)
+                    # Consistent cyan color for all notes
+                    color = (0, 255, 255)
+                    
                     is_auto = note.get('is_auto', False)
                     alpha = 60 if is_auto else 255
                     nx, ny = lx[note['lane']], int(y)
+                    
+                    # Render Long Note body
+                    if note.get('is_ln') and ('end_time_ms' in note or 'visual_end_time_ms' in note):
+                        v_end_time = note.get('visual_end_time_ms', note.get('end_time_ms', note['time_ms']))
+                        etd = v_end_time - current_visual_time
+                        ey = (hit_y - note_h) - etd * spd
+                        body_h = int(y - ey)
+                        if body_h > 0:
+                            # Body pulse
+                            b_alpha = int(alpha * 0.6)
+                            self.renderer.draw_color = (*color, b_alpha)
+                            self.renderer.fill_rect((nx + 4, int(ey) + note_h, lane_w - 8, body_h))
+                            # Borders
+                            self.renderer.draw_color = (*color, alpha)
+                            self.renderer.draw_line((nx + 4, int(ey) + note_h), (nx + 4, int(y) + note_h))
+                            self.renderer.draw_line((nx + lane_w - 4, int(ey) + note_h), (nx + lane_w - 4, int(y) + note_h))
                     
                     self.renderer.draw_color = (0, 0, 0, int(180 * (alpha/255)))
                     self.renderer.fill_rect((nx, ny + note_h - 4, lane_w, 4))

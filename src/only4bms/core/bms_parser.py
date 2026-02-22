@@ -18,6 +18,7 @@ _HEADER_TAGS = {
     '#GENRE ':    'genre',
     '#STAGEFILE ':'stagefile',
     '#BANNER ':   'banner',
+    '#TOTAL ':    'total',
 }
 _BPM_TAG = '#BPM '
 _NOTE_PATTERN = re.compile(r'#(\d{3})(1[1-9A-Z]|2[1-9A-Z]):(.+)')
@@ -25,6 +26,10 @@ _CHANNEL_PATTERN = re.compile(r'#(\d{3})([0-9A-Z]{2}):(.+)')
 _WAV_PATTERN = re.compile(r'#WAV([0-9a-zA-Z]{2})\s+(.+)')
 _BMP_PATTERN = re.compile(r'#BMP([0-9a-zA-Z]{2})\s+(.+)')
 _MEASURE_LEN_PATTERN = re.compile(r'#(\d{3})02:(.+)')
+_BPM_EXT_PATTERN = re.compile(r'#BPM([0-9a-zA-Z]{2})\s+(.+)')
+_STOP_PATTERN = re.compile(r'#STOP([0-9a-zA-Z]{2})\s+(.+)')
+_LNOBJ_TAG = '#LNOBJ '
+_LNTYPE_TAG = '#LNTYPE '
 
 
 class BMSParser:
@@ -43,11 +48,17 @@ class BMSParser:
         self.genre = "Unknown"
         self.stagefile = None  # cover image path
         self.banner = None
+        self.total = 200.0 # Default total
         self.total_notes = 0
 
         # Asset maps
         self.wav_map = {}   # wav_id → filepath
         self.bmp_map = {}   # bmp_id → filepath
+        self.ln_obj = None  # LNOBJ id
+        self.ln_type = 1    # LNTYPE (1 is standard toggle)
+        self.bpm_map = {}   # bpm_id → bpm_value
+        self.stop_map = {}  # stop_id → stop_value
+        self.visual_timing_map = []  # [(real_time, visual_time, factor)]
 
         # Parsed output
         self.notes = []     # [{time_ms, lane, sample_ids}]
@@ -69,7 +80,7 @@ class BMSParser:
         self._parse_header(metadata_only=False)
         self._parse_channels()
         self._resolve_wav_paths()
-        return self.notes, self.bgms, self.bgas, self.bmp_map
+        return self.notes, self.bgms, self.bgas, self.bmp_map, self.visual_timing_map
 
     # ── Internal: header ─────────────────────────────────────────────────
 
@@ -81,113 +92,260 @@ class BMSParser:
                 continue
 
             # Standard string tags
+            line_upper = line.upper()
+            found_tag = False
             for prefix, attr in _HEADER_TAGS.items():
-                if line.startswith(prefix):
+                if line_upper.startswith(prefix.upper()):
                     val = line.split(' ', 1)[1]
                     # Resolve image paths to absolute
                     if attr in ('stagefile', 'banner'):
                         val = os.path.join(self.bms_dir, val.strip())
+                    if attr == 'total':
+                        try:
+                            val = float(val)
+                        except ValueError:
+                            val = 200.0
                     setattr(self, attr, val)
+                    found_tag = True
                     break
-            else:
-                # BPM
-                if line.startswith(_BPM_TAG):
+            
+            if found_tag:
+                continue
+
+            # BPM
+            if line_upper.startswith(_BPM_TAG.upper()):
+                try:
+                    self.bpm = float(line.split(' ')[1])
+                except (ValueError, IndexError):
+                    pass
+            # Count notes (metadata mode)
+            elif metadata_only and _NOTE_PATTERN.match(line):
+                m = _NOTE_PATTERN.match(line)
+                if m:
+                    data = m.group(3)
+                    events = [data[i:i+2] for i in range(0, len(data), 2)]
+                    self.total_notes += sum(1 for e in events if e != '00')
+            # WAV definitions
+            elif line_upper.startswith('#WAV'):
+                m = _WAV_PATTERN.match(line)
+                if m:
+                    self.wav_map[m.group(1).upper()] = os.path.join(self.bms_dir, m.group(2).strip())
+            # BMP definitions
+            elif line_upper.startswith('#BMP'):
+                m = _BMP_PATTERN.match(line)
+                if m:
+                    self.bmp_map[m.group(1).upper()] = os.path.join(self.bms_dir, m.group(2).strip())
+            # Measure length
+            elif re.match(r'#\d{3}02:', line):
+                m = _MEASURE_LEN_PATTERN.match(line)
+                if m:
                     try:
-                        self.bpm = float(line.split(' ')[1])
+                        self.measure_lengths[int(m.group(1))] = float(m.group(2))
                     except ValueError:
                         pass
-                # Count notes (metadata mode)
-                elif metadata_only:
-                    m = _NOTE_PATTERN.match(line)
-                    if m:
-                        data = m.group(3)
-                        events = [data[i:i+2] for i in range(0, len(data), 2)]
-                        self.total_notes += sum(1 for e in events if e != '00')
-                # WAV definitions
-                elif line.startswith('#WAV'):
-                    m = _WAV_PATTERN.match(line)
-                    if m:
-                        self.wav_map[m.group(1).upper()] = os.path.join(self.bms_dir, m.group(2).strip())
-                # BMP definitions
-                elif line.startswith('#BMP'):
-                    m = _BMP_PATTERN.match(line)
-                    if m:
-                        self.bmp_map[m.group(1).upper()] = os.path.join(self.bms_dir, m.group(2).strip())
-                # Measure length
-                elif re.match(r'#\d{3}02:', line):
-                    m = _MEASURE_LEN_PATTERN.match(line)
-                    if m:
-                        try:
-                            self.measure_lengths[int(m.group(1))] = float(m.group(2))
-                        except ValueError:
-                            pass
+            # LNOBJ
+            elif line_upper.startswith(_LNOBJ_TAG.upper()):
+                self.ln_obj = line.split(' ', 1)[1].strip().upper()
+            # LNTYPE
+            elif line_upper.startswith(_LNTYPE_TAG.upper()):
+                try:
+                    self.ln_type = int(line.split(' ', 1)[1].strip())
+                except ValueError:
+                    pass
+            # BPM definitions (#BPMxx)
+            elif line_upper.startswith('#BPM'):
+                m = _BPM_EXT_PATTERN.match(line)
+                if m:
+                    try:
+                        self.bpm_map[m.group(1).upper()] = float(m.group(2))
+                    except ValueError:
+                        pass
+            # STOP definitions (#STOPxx)
+            elif line_upper.startswith('#STOP'):
+                m = _STOP_PATTERN.match(line)
+                if m:
+                    try:
+                        self.stop_map[m.group(1).upper()] = float(m.group(2))
+                    except ValueError:
+                        pass
 
     # ── Internal: channels & note assignment ─────────────────────────────
 
     def _parse_channels(self):
         """Process channel data into timed notes, BGMs, and BGAs."""
-        ms_per_measure = 240_000 / self.bpm
-        events_by_measure = {}
+        # 1. Collect all raw events
+        events_by_measure = {} # measure -> {channel -> {pos -> ev}}
         max_measure = 0
-
-        # Collect raw events
         for line in self.lines:
-            m = _CHANNEL_PATTERN.match(line.strip())
-            if not m:
+            m_match = _CHANNEL_PATTERN.match(line.strip())
+            if not m_match:
                 continue
-            measure, channel, data = int(m.group(1)), m.group(2), m.group(3)
+            measure, ch, data = int(m_match.group(1)), m_match.group(2), m_match.group(3)
             max_measure = max(max_measure, measure)
-            events_by_measure.setdefault(measure, []).append({
-                'channel': channel,
-                'events': [data[i:i+2] for i in range(0, len(data), 2)],
-            })
+            evs = [data[i:i+2] for i in range(0, len(data), 2)]
+            n = len(evs)
+            
+            for i, ev in enumerate(evs):
+                if ev == '00': continue
+                pos = i / n
+                # Use a list to support multiple events at the same position (layering)
+                events_by_measure.setdefault(measure, {}).setdefault(ch, {}).setdefault(pos, []).append(ev)
 
-        # Build measure start times
-        measure_starts = {}
-        t = 0.0
+        # 2. Integrate timing (BPM & Stops) to find event times and measure starts
+        initial_bpm = self.bpm
+        current_bpm = self.bpm
+        current_real_time = 0.0
+        current_visual_time = 0.0
+        event_timings = {} # (measure, ch, pos) -> (real_time, visual_time)
+        
+        # Segment: (start_real, start_visual, speed_factor)
+        self.visual_timing_map = [(0.0, 0.0, 1.0)]
+
         for m in range(max_measure + 1):
-            measure_starts[m] = t
-            t += ms_per_measure * self.measure_lengths.get(m, 1.0)
+            m_len = self.measure_lengths.get(m, 1.0)
+            m_data = events_by_measure.get(m, {})
+            all_positions = sorted(set(pos for ch_data in m_data.values() for pos in ch_data))
+            
+            last_pos = 0.0
+            for pos in all_positions:
+                delta_beats = (pos - last_pos) * 4.0 * m_len
+                delta_real_ms = delta_beats * (60_000.0 / current_bpm)
+                delta_visual_ms = delta_beats * (60_000.0 / initial_bpm)
+                
+                current_real_time += delta_real_ms
+                current_visual_time += delta_visual_ms
+                
+                for ch, ch_data in m_data.items():
+                    if pos in ch_data:
+                        event_timings[(m, ch, pos)] = (current_real_time, current_visual_time)
+                
+                # Apply Timing Changes (BPM/Stop)
+                timing_changed = False
+                if '03' in m_data and pos in m_data['03']: # BPM Change (hex)
+                    try:
+                        current_bpm = int(m_data['03'][pos][0], 16)
+                        timing_changed = True
+                    except ValueError: pass
+                if '08' in m_data and pos in m_data['08']: # Ext BPM
+                    bpm_id = m_data['08'][pos][0].upper()
+                    if bpm_id in self.bpm_map:
+                        current_bpm = self.bpm_map[bpm_id]
+                        timing_changed = True
+                
+                if timing_changed:
+                    self.visual_timing_map.append((current_real_time, current_visual_time, current_bpm / initial_bpm))
 
-        # Process events into grouped notes
-        grouped_notes = {}  # time_ms → [sample_ids]
+                if '09' in m_data and pos in m_data['09']: # STOP
+                    stop_id = m_data['09'][pos][0].upper()
+                    if stop_id in self.stop_map:
+                        stop_val = self.stop_map[stop_id]
+                        stop_ms = (stop_val / 192.0) * (4.0 * 60_000.0 / current_bpm)
+                        # Freeze scroll: factor becomes 0
+                        self.visual_timing_map.append((current_real_time, current_visual_time, 0.0))
+                        current_real_time += stop_ms
+                        # Resume scroll
+                        self.visual_timing_map.append((current_real_time, current_visual_time, current_bpm / initial_bpm))
+                
+                last_pos = pos
+            
+            # Finish the measure
+            delta_to_end_beats = (1.0 - last_pos) * 4.0 * m_len
+            current_real_time += delta_to_end_beats * (60_000.0 / current_bpm)
+            current_visual_time += delta_to_end_beats * (60_000.0 / initial_bpm)
 
-        for measure, channel_events in events_by_measure.items():
-            start = measure_starts[measure]
-            duration = ms_per_measure * self.measure_lengths.get(measure, 1.0)
+        # 3. Process events into grouped notes using calculated timings
+        grouped_notes = {}  # time_ms → [note_data_with_v_time]
+        for t_key in sorted(event_timings):
+            m, ch, pos = t_key
+            real_time, visual_time = event_timings[t_key]
+            ev_list = events_by_measure[m][ch][pos]
+            
+            for ev in ev_list:
+                is_playable = (ch.startswith('1') or ch.startswith('2') or 
+                               ch.startswith('5') or ch.startswith('6')) and ch[1] != '0'
+                
+                if is_playable:
+                    grouped_notes.setdefault(real_time, []).append({'ch': ch, 'ev': ev, 'v_time_ms': visual_time})
+                elif ch == BGM_CHANNEL:
+                    self.bgms.append({'time_ms': real_time, 'sample_id': ev})
+                elif ch == BGA_CHANNEL:
+                    self.bgas.append({'time_ms': real_time, 'bmp_id': ev})
 
-            for ce in channel_events:
-                ch, events = ce['channel'], ce['events']
-                n = len(events)
-                for i, ev in enumerate(events):
-                    if ev == '00':
-                        continue
-                    event_time = start + duration * (i / n)
-
-                    # Playable channels: 11-1Z (Player 1), 21-2Z (Player 2)
-                    if (ch.startswith('1') or ch.startswith('2')) and ch[1] != '0':
-                        grouped_notes.setdefault(event_time, []).append(ev)
-                    elif ch == BGM_CHANNEL:
-                        self.bgms.append({'time_ms': event_time, 'sample_id': ev})
-                    elif ch == BGA_CHANNEL:
-                        self.bgas.append({'time_ms': event_time, 'bmp_id': ev})
-
-        # Smart lane assignment (distribute to least-recently-used lanes)
+        # Smart lane assignment
         last_lane_time = [-1000.0] * NUM_LANES
+        open_lns = {} # ch -> {note_index}
+        last_note_idx_by_ch = {} # ch -> note_index
 
         for t in sorted(grouped_notes):
-            remaining = list(grouped_notes[t])
-            while remaining:
+            for data in grouped_notes[t]:
+                ch, ev = data['ch'], data['ev']
+                
+                # Handling LN End (if LNOBJ or LN channel toggle)
+                if self.ln_obj and ev == self.ln_obj and (ch.startswith('1') or ch.startswith('2')):
+                        note_idx = last_note_idx_by_ch[ch]
+                        self.notes[note_idx]['end_time_ms'] = t
+                        self.notes[note_idx]['visual_end_time_ms'] = data['v_time_ms']
+                        self.notes[note_idx]['is_ln'] = True
+                        self.notes[note_idx].setdefault('end_sample_ids', []).append(ev)
+                        # Release the lane
+                        lane = self.notes[note_idx]['lane']
+                        last_lane_time[lane] = t
+                        continue
+                
+                if ch in open_lns and (ch.startswith('5') or ch.startswith('6')):
+                    note_idx = open_lns.pop(ch)
+                    self.notes[note_idx]['end_time_ms'] = t
+                    self.notes[note_idx]['visual_end_time_ms'] = data['v_time_ms']
+                    self.notes[note_idx]['is_ln'] = True
+                    self.notes[note_idx].setdefault('end_sample_ids', []).append(ev)
+                    # Release the lane
+                    lane = self.notes[note_idx]['lane']
+                    last_lane_time[lane] = t
+                    continue
+
                 # Pick the lane idle for the longest
                 best = max(range(NUM_LANES), key=lambda l: t - last_lane_time[l])
-                sid = remaining.pop(0)
+                
+                # Check if we should start an LN
+                is_ln_start = bool(ch.startswith('5') or ch.startswith('6'))
+                
+                # Merge into existing note at same time AND lane if possible (includes multi-note stacks)
+                merged = False
+                # Search backwards for a note at same time and lane
+                for i in range(len(self.notes)-1, -1, -1):
+                    prev_note = self.notes[i]
+                    if abs(prev_note['time_ms'] - t) > 0.1: break # Too far back
+                    if prev_note['lane'] == best and 'end_time_ms' not in prev_note:
+                        prev_note['sample_ids'].append(ev)
+                        last_note_idx_by_ch[ch] = i
+                        merged = True
+                        break
+                
+                if not merged:
+                    note_idx = len(self.notes)
+                    self.notes.append({
+                        'time_ms': t, 
+                        'visual_time_ms': data['v_time_ms'],
+                        'lane': best, 
+                        'sample_ids': [ev]
+                    })
+                    
+                    # Track end time for lane assignment if it's an LN
+                    if is_ln_start:
+                        open_lns[ch] = note_idx
+                        # We'll update last_lane_time[best] once we know the end_time_ms
+                        # For now, mark it as "very busy"
+                        last_lane_time[best] = t + 999999.0 
+                    else:
+                        last_lane_time[best] = t
+                    
+                    last_note_idx_by_ch[ch] = note_idx
 
-                # Merge into existing note at same time+lane if possible
-                if self.notes and self.notes[-1]['time_ms'] == t and self.notes[-1]['lane'] == best:
-                    self.notes[-1]['sample_ids'].append(sid)
-                else:
-                    self.notes.append({'time_ms': t, 'lane': best, 'sample_ids': [sid]})
-                    last_lane_time[best] = t
+        # Close any dangling LNs (graceful failure)
+        for ch, idx in open_lns.items():
+            self.notes[idx]['end_time_ms'] = self.notes[idx]['time_ms'] + 100
+            self.notes[idx]['visual_end_time_ms'] = self.notes[idx]['visual_time_ms'] + 100
+            self.notes[idx]['is_ln'] = True
 
         # Tag Auto-Notes: If a note is within 20ms of previous note in SAME lane, mark as auto.
         # This prevents 4-lane compressed charts from being physically impossible.
