@@ -18,11 +18,13 @@ DEFAULT_SETTINGS = {
     "hit_window_mult": 1.0,
     "fullscreen": 1,
     "audio_freq": 44100,
-    "audio_buffer": 1024,
+    "audio_buffer": 256,
     "audio_channels": 2,
-    "judge_delay": 30.0,
+    "judge_delay": 10.0,
     "note_type": 0,
     "ai_note_type": 0,
+    "input_polling_rate": 1000,
+    "visual_offset": 0,
 }
 
 SETTINGS_FILE = "settings.json"
@@ -129,16 +131,27 @@ def main():
     # Create SDL2 Window and Renderer
     # Note: pygame.init() must be called first
     # Create SDL2 Window and Renderer
-    # Set hint for linear scaling (smoothes out pixels when upscaling)
-    try:
-        pygame.set_hint("SDL_RENDER_SCALE_QUALITY", "linear")
-    except AttributeError:
-        # Fallback for older versions or environment issues
-        import os
-        os.environ["SDL_RENDER_SCALE_QUALITY"] = "linear"
+    # Set hints for maximum performance
+    hints = {
+        "SDL_RENDER_SCALE_QUALITY": "linear",
+        "SDL_RENDER_BATCHING": "1",
+        "SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR": "1",
+        "SDL_RENDER_DRIVER": "direct3d11",
+        "SDL_AUDIO_RESAMPLING_MODE": "fast",
+        "SDL_VIDEO_DOUBLE_BUFFER": "1"
+    }
+    
+    for hint, value in hints.items():
+        try:
+            pygame.set_hint(hint, value)
+        except AttributeError:
+            import os
+            # Fallback for older pygame/SDL versions
+            env_key = hint if hint.startswith("SDL_") else f"SDL_HINT_{hint}"
+            os.environ[env_key] = value
     
     window = Window("Only4BMS", size=(800, 600))
-    renderer = Renderer(window)
+    renderer = Renderer(window, vsync=1)
     renderer.draw_blend_mode = 1
     
     apply_display_mode(settings, window)
