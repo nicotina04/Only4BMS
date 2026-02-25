@@ -138,6 +138,19 @@ class SettingsMenu:
                 self._adjust(self.items[self.selected_index], event.y)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 self._on_click(event.pos)
+                self._handle_button_click(event.pos)
+
+    def _handle_button_click(self, pos):
+        # Calibrate button check
+        title_rect = self.title_font.render("SYSTEM SETTINGS", True, COLOR_ACCENT).get_rect(topleft=(self._s(50), self._s(40)))
+        btn_rect = pygame.Rect(title_rect.right + self._s(20), title_rect.top, self._s(150), title_rect.height)
+        
+        if btn_rect.collidepoint(pos):
+            from .calibration_menu import CalibrationMenu
+            CalibrationMenu(self.settings, self.renderer, self.window).run()
+            # Restore state after returning
+            pygame.display.set_caption("Settings")
+            pygame.key.set_repeat(300, 50)
 
     def _on_key(self, key):
         if key == pygame.K_UP and self.selected_index > 1: # Can't go to index 0 (SYSTEM header)
@@ -183,6 +196,7 @@ class SettingsMenu:
     # ── Drawing ───────────────────────────────────────────────────────────
 
     def _draw(self):
+        mx, my = pygame.mouse.get_pos()
         # Commercial Dark Gradient Background
         for y in range(self.h):
             grad = 1.0 - (y / self.h)
@@ -190,11 +204,19 @@ class SettingsMenu:
             pygame.draw.line(self.screen, c, (0, y), (self.w, y))
 
         # Header Title
-        self.screen.blit(
-            self.title_font.render("SYSTEM SETTINGS", True, COLOR_ACCENT),
-            (self._s(50), self._s(40)))
+        title_surf = self.title_font.render("SYSTEM SETTINGS", True, COLOR_ACCENT)
+        title_rect = title_surf.get_rect(topleft=(self._s(50), self._s(40)))
+        self.screen.blit(title_surf, title_rect)
+        
+        # Calibrate Button
+        btn_rect = pygame.Rect(title_rect.right + self._s(20), title_rect.top, self._s(150), title_rect.height)
+        btn_hovered = btn_rect.collidepoint(mx, my)
+        pygame.draw.rect(self.screen, COLOR_SELECTED_BG if btn_hovered else COLOR_PANEL_BG, btn_rect, border_radius=8)
+        pygame.draw.rect(self.screen, COLOR_ACCENT, btn_rect, 2, border_radius=8)
+        
+        btn_txt = self.small_font.render("CALIBRATE", True, COLOR_ACCENT if btn_hovered else COLOR_TEXT_PRIMARY)
+        self.screen.blit(btn_txt, btn_txt.get_rect(center=btn_rect.center))
 
-        mx, my = pygame.mouse.get_pos()
         row_h = self._s(65)
         start_y = self._s(120)
         margin_l = self._s(50)
