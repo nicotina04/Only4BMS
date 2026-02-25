@@ -23,6 +23,7 @@ class GameEngine:
         self.held_lns = [None] * 4 # lane -> active LN note
         self.bgm_idx = 0
         self.bga_idx = 0
+        self.note_idx = 0
         self.all_notes_passed = False
         self.all_notes_passed_time = None
         self.ln_tick_timer = 0.0
@@ -31,7 +32,11 @@ class GameEngine:
         max_window = JUDGMENT_DEFS["GOOD"]["threshold_ms"] * self.hw_mult
         closest, min_diff = None, float('inf')
 
-        for note in self.notes:
+        # Optimization: Only search from note_idx within a window
+        for i in range(self.note_idx, len(self.notes)):
+            note = self.notes[i]
+            if note['time_ms'] - current_time > max_window: break # Too far in future
+            
             if note['lane'] == lane and 'hit' not in note and 'miss' not in note and not note.get('is_auto'):
                 diff = abs(note['time_ms'] - current_time)
                 if diff < min_diff and diff <= max_window:
@@ -93,47 +98,61 @@ class GameEngine:
         self.current_visual_time = self.get_visual_time(current_time)
         miss_window = JUDGMENT_DEFS["MISS"]["threshold_ms"] * self.hw_mult
         
-        # Normal notes
-        for note in self.notes:
-            if 'hit' not in note and 'miss' not in note:
-                if note.get('is_auto'):
-                    if current_time >= note['time_ms']:
-                        note['hit'] = True
-                        for sid in note['sample_ids']:
-                            self.play_sound_cb(sid)
-                    continue
-
-                if current_time - note['time_ms'] > miss_window:
-                    note['miss'] = True
-                    self.set_judgment_cb("MISS", note['lane'], current_time)
-                elif current_time >= note['time_ms'] and self.held_lns[note['lane']]:
-                    # Overlap with held LN: Treat as PERFECT hit
+        # Normal notes (Optimized index check)
+        while self.note_idx < len(self.notes):
+            note = self.notes[self.note_idx]
+            
+            # If note is already processed, move index
+            if 'hit' in note or 'miss' in note:
+                self.note_idx += 1
+                continue
+                
+            # Check for auto-play or miss
+            if note.get('is_auto'):
+                if current_time >= note['time_ms']:
                     note['hit'] = True
                     for sid in note['sample_ids']:
                         self.play_sound_cb(sid)
-                    self.set_judgment_cb("PERFECT", note['lane'], current_time)
-        
+                    self.note_idx += 1
+                    # Do NOT break; check next note immediately
+                else:
+                    break # Future auto-note
+            elif current_time - note['time_ms'] > miss_window:
+                note['miss'] = True
+                self.set_judgment_cb("MISS", note['lane'], current_time)
+                self.note_idx += 1
+                # Do NOT break; check next note
+            elif current_time >= note['time_ms'] and self.held_lns[note['lane']] is not None:
+                # Overlap with held LN: Treat as PERFECT hit
+                note['hit'] = True
+                for sid in note['sample_ids']:
+                    self.play_sound_cb(sid)
+                self.set_judgment_cb("PERFECT", note['lane'], current_time)
+                self.note_idx += 1
+                # Do NOT break
+            else:
+                # This note is in the future and not auto-playable
+                break
+
         # Long notes - check for overdue release
         for lane, note in enumerate(self.held_lns):
             if note:
-                # If held past the GOOD window, it's a MISS
                 miss_limit = note['end_time_ms'] + (JUDGMENT_DEFS["GOOD"]["threshold_ms"] * self.hw_mult)
                 if current_time > miss_limit:
-                    # Lenient auto-release: if held past the limit, just count as successful release
                     judgment = note.get('start_judgment', 'PERFECT')
                     self.set_judgment_cb(judgment, lane, current_time)
                     for sid in note.get('end_sample_ids', []):
                         self.play_sound_cb(sid)
                     self.held_lns[lane] = None
 
-        # Long Note Combo Ticks
+        # Long Note Combo Ticks (CATCH UP logic)
         if any(self.held_lns):
-            if current_time - self.ln_tick_timer >= LN_COMBO_TICK_MS:
+            # If we jumped a lot of time, we might need multiple ticks
+            while current_time - self.ln_tick_timer >= LN_COMBO_TICK_MS:
+                self.ln_tick_timer += LN_COMBO_TICK_MS # Step forward precisely
                 if self.on_ln_tick_cb:
-                    self.on_ln_tick_cb(current_time)
-                self.ln_tick_timer = current_time
+                    self.on_ln_tick_cb(self.ln_tick_timer)
         else:
-            # Reset timer when no LNs are held so it starts fresh on next press
             self.ln_tick_timer = current_time
 
         # BGMs (Optimized index check)

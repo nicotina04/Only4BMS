@@ -82,6 +82,7 @@ class RhythmGame:
         self.paused_at = 0
         self.countdown_start = 0
         self.frame_count = 0
+        self._last_logic_time = 0
         
         self.judgments = {k: 0 for k in JUDGMENT_ORDER}
         self.combo = 0
@@ -166,15 +167,17 @@ class RhythmGame:
             for i, k in enumerate(self.keys):
                 if event.key == k:
                     self.lane_pressed[i] = True
-                    delay = self.settings.get('judge_delay', 30.0)
-                    t = (time.perf_counter() - self.start_time) * 1000.0 - delay
-                    self.engine.process_hit(i, t)
+                    # Use high precision timing directly
+                    t_now = time.perf_counter()
+                    delay_ms = self.settings.get('judge_delay', 30.0)
+                    t_ms = (t_now - self.start_time) * 1000.0 - delay_ms
+                    self.engine.process_hit(i, t_ms)
         elif event.type == pygame.KEYUP:
             for i, k in enumerate(self.keys):
                 if event.key == k:
                     self.lane_pressed[i] = False
-                    t = (time.perf_counter() - self.start_time) * 1000.0
-                    self.engine.process_release(i, t)
+                    t_ms = (time.perf_counter() - self.start_time) * 1000.0
+                    self.engine.process_release(i, t_ms)
 
     def _pause(self):
         self.paused_at = time.perf_counter()
@@ -189,47 +192,90 @@ class RhythmGame:
     def run(self):
         self.start_time = time.perf_counter()
         self.is_running = True
+        
+        # High Polling Rate & Logic Sub-stepping Initialization
+        polling_rate = self.settings.get('input_polling_rate', 1000)
+        dt_logic = 1.0 / polling_rate
+        accumulator = 0.0
+        last_frame_time = time.perf_counter()
+        simulated_real_time = self.start_time
+        
+        # Render rate control
+        target_fps = self.settings.get('fps', 144)
+        dt_render = 1.0 / target_fps
+        last_render_time = time.perf_counter()
+
         while self.is_running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT: self.is_running = False
-                elif self.state == "PLAYING": self.handle_input(event)
-                elif self.state == "PAUSED": self._handle_pause_input(event)
-                elif self.state == "RESULT":
-                    if event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_ESCAPE):
-                        self.is_running = False
+            t_now = time.perf_counter()
+            elapsed = t_now - last_frame_time
+            last_frame_time = t_now
+            accumulator += elapsed
             
-            if self.state == "PLAYING":
-                now = (time.perf_counter() - self.start_time) * 1000.0
-                if self.mode == 'ai_multi': self._update_ai(now)
-                if self.engine.update(now): self.state = "RESULT"
+            # 1. High-Precision Logic Loop (Sub-stepping)
+            # This loop simulates time in fixed dt_logic steps regardless of frame rate
+            while accumulator >= dt_logic:
+                # 1a. Poll Input Events (Happens every sub-step for peak precision)
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        self.is_running = False
+                    elif self.state == "PLAYING":
+                        self.handle_input(event)
+                    elif self.state == "PAUSED":
+                        self._handle_pause_input(event)
+                    elif self.state == "RESULT":
+                        if event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_ESCAPE):
+                            self.is_running = False
                 
-                # Continuous LN Effects (spawn every 4 frames for better consistency)
-                self.frame_count += 1
-                if self.frame_count % 4 == 0:
-                    for lane, note in enumerate(self.engine.held_lns):
-                        if note:
-                            # Use a slightly smaller radius for continuous sparks
-                            self.effects.append({
-                                'lane': lane, 'radius': 22, 'color': (0, 255, 255), 'alpha': 160,
-                                'note_type': self.settings.get('note_type', 0)
-                            })
+                # 1b. Update Game Game Logic (Simulated sub-step time)
+                if self.state == "PLAYING":
+                    # We use the midpoint of the sub-step for logic to balance jitter
+                    sim_time_ms = (simulated_real_time - self.start_time) * 1000.0
                     if self.mode == 'ai_multi':
-                        for lane, note in enumerate(self.ai_engine.held_lns):
+                        self._update_ai(sim_time_ms)
+                    if self.engine.update(sim_time_ms):
+                        self.state = "RESULT"
+                
+                simulated_real_time += dt_logic
+                accumulator -= dt_logic
+                # Safety break to prevent "Spiral of Death"
+                if time.perf_counter() - t_now > 0.05:
+                    accumulator = 0 # Drop frames if we can't keep up
+                    break 
+            
+            # 2. Render Loop (Capped)
+            t_render_check = time.perf_counter()
+            if t_render_check - last_render_time >= dt_render: 
+                now_ms = (t_render_check - self.start_time) * 1000.0
+                vis_offset = self.settings.get('visual_offset', 0.0)
+                
+                if self.state == "PLAYING":
+                    # Continuous LN Effects
+                    self.frame_count += 1
+                    if self.frame_count % 4 == 0:
+                        for lane, note in enumerate(self.engine.held_lns):
                             if note:
-                                self.ai_effects.append({
+                                self.effects.append({
                                     'lane': lane, 'radius': 22, 'color': (0, 255, 255), 'alpha': 160,
-                                    'note_type': self.settings.get('ai_note_type', 0)
+                                    'note_type': self.settings.get('note_type', 0)
                                 })
+                        if self.mode == 'ai_multi':
+                            for lane, note in enumerate(self.ai_engine.held_lns):
+                                if note:
+                                    self.ai_effects.append({
+                                        'lane': lane, 'radius': 22, 'color': (0, 255, 255), 'alpha': 160,
+                                        'note_type': self.settings.get('ai_note_type', 0)
+                                    })
+                    # Pass offset time to draw for visual adjustment
+                    self._draw(now_ms + vis_offset)
+                elif self.state == "PAUSED":
+                    self._draw_paused()
+                elif self.state == "COUNTDOWN":
+                    self._draw_countdown()
+                elif self.state == "RESULT":
+                    self._draw_result(now_ms + vis_offset)
 
-                self._draw(now)
-            elif self.state == "PAUSED": self._draw_paused()
-            elif self.state == "COUNTDOWN": self._draw_countdown()
-            elif self.state == "RESULT":
-                now = (time.perf_counter() - self.start_time) * 1000.0
-                self._draw_result(now)
-
-            self.renderer.present()
-            self.clock.tick(self.settings.get('fps', 144))
+                self.renderer.present()
+                last_render_time = time.perf_counter()
 
     def _update_ai(self, current_time):
         miss_window = JUDGMENT_DEFS["MISS"]["threshold_ms"] * self.hw_mult
@@ -238,13 +284,21 @@ class RhythmGame:
         # AI Perception
         ai_jitter = 30.0 if self.ai_difficulty == 'normal' else 2.0
         ai_actions = [0] * NUM_LANES
+        
+        # Optimization: Pre-filter active notes once per update
+        active_notes = [
+            n for n in self.ai_notes 
+            if 'hit' not in n and 'miss' not in n and (n['time_ms'] - current_time) <= 1000.0
+        ]
+        
         for lane in range(NUM_LANES):
             obs = np.ones(3, dtype=np.float32)
             ttns = []
-            for n in self.ai_notes:
-                if n['lane'] == lane and 'hit' not in n and 'miss' not in n:
+            for n in active_notes:
+                if n['lane'] == lane:
                     p_ttn = (n['time_ms'] - current_time) + np.random.normal(0, ai_jitter)
-                    if -miss_window <= p_ttn <= 1000.0: ttns.append(p_ttn)
+                    if p_ttn >= -miss_window:
+                        ttns.append(p_ttn)
             ttns.sort()
             if ttns: obs[0] = ttns[0] / 1000.0
             if len(ttns) > 1: obs[1] = ttns[1] / 1000.0
@@ -264,18 +318,18 @@ class RhythmGame:
         self.game_renderer.draw_bga(t, self.engine.current_bga_img, self.assets)
         
         # Player 1 View
-        p1_state = self._get_draw_state('p1')
+        p1_state = self._get_draw_state('p1', t)
         self.game_renderer.draw_playing(t, p1_state)
         self.game_renderer.draw_effects(self.effects, self.lane_x, self.lane_w)
 
         if self.mode == 'ai_multi':
             # AI View
-            ai_state = self._get_draw_state('ai')
+            ai_state = self._get_draw_state('ai', t)
             self.game_renderer.draw_playing(t, ai_state)
             self.game_renderer.draw_effects(self.ai_effects, self.p2_lane_x, self.lane_w)
             self.game_renderer.draw_score_bar(self.judgments, self.ai_judgments)
 
-    def _get_draw_state(self, side):
+    def _get_draw_state(self, side, t):
         if side == 'p1':
             return {
                 'lane_x': self.lane_x, 'notes': self.engine.notes, 'lane_pressed': self.lane_pressed,
@@ -283,7 +337,7 @@ class RhythmGame:
                 'judgment_color': self.judgment_color, 'judgment_timer': self.judgment_timer,
                 'combo_timer': self.combo_timer,
                 'lane_total_w': self.lane_total_w, 'speed': self.speed, 'hw_mult': self.hw_mult,
-                'held_lns': self.engine.held_lns, 'current_visual_time': self.engine.current_visual_time,
+                'held_lns': self.engine.held_lns, 'current_visual_time': self.engine.get_visual_time(t),
                 'all_notes_passed': self.engine.all_notes_passed,
                 'all_notes_passed_time': self.engine.all_notes_passed_time,
                 'note_type': self.settings.get('note_type', 0)
@@ -295,7 +349,7 @@ class RhythmGame:
                 'judgment_color': self.ai_judgment_color, 'judgment_timer': self.ai_judgment_timer,
                 'combo_timer': self.ai_combo_timer,
                 'lane_total_w': self.lane_total_w, 'speed': self.speed, 'hw_mult': self.hw_mult,
-                'held_lns': self.ai_engine.held_lns, 'current_visual_time': self.ai_engine.current_visual_time,
+                'held_lns': self.ai_engine.held_lns, 'current_visual_time': self.ai_engine.get_visual_time(t),
                 'all_notes_passed': self.ai_engine.all_notes_passed,
                 'all_notes_passed_time': self.ai_engine.all_notes_passed_time,
                 'note_type': self.settings.get('ai_note_type', 0),

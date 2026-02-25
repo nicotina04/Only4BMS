@@ -23,8 +23,103 @@ class GameRenderer:
         self.bga_texture = None # Video frame or static image
         self.bga_updated_once = False
         
+        # --- Cache for performance ---
+        self.circle_note_cache = {} # (color, alpha, size) -> Texture
+        self.bar_effect_cache = {}  # (color, alpha, r) -> Texture
+        self.circle_effect_cache = {} # (color, alpha, r) -> Texture
+        self.text_cache = {} # (text, font_id, color, alpha) -> Texture
+        self.ai_vision_texture = None # Pre-rendered scanner static part
+        
     def _s(self, v): return int(v * self.sy)
     def _sx(self, v): return int(v * self.sx)
+
+    def _get_circle_note_texture(self, color, alpha, lane_w):
+        key = (color, alpha, lane_w)
+        if key not in self.circle_note_cache:
+            cr = int(lane_w * 0.4)
+            surf = pygame.Surface((lane_w, lane_w), pygame.SRCALPHA)
+            # 1. Circular Shadow
+            shadow_color = (0, 0, 0, int(160 * (alpha/255)))
+            pygame.draw.circle(surf, shadow_color, (lane_w // 2, lane_w // 2 + 2), cr)
+            # 2. Main Body
+            pygame.draw.circle(surf, (*color, alpha), (lane_w // 2, lane_w // 2), cr)
+            # 3. Top highlight
+            pygame.draw.circle(surf, (255, 255, 255, int(160 * (alpha/255))), (lane_w // 2, lane_w // 2 - 1), cr - 1, 3)
+            # 4. Inner small circle
+            pygame.draw.circle(surf, (255, 255, 255, int(110 * (alpha/255))), (lane_w // 2, lane_w // 2), cr // 3, 2)
+            self.circle_note_cache[key] = Texture.from_surface(self.renderer, surf)
+        return self.circle_note_cache[key]
+
+    def _get_bar_effect_texture(self, color, alpha, r, lane_w):
+        key = (color, alpha, r, lane_w)
+        if key not in self.bar_effect_cache:
+            bw = int(lane_w * 0.8) + r * 2
+            bh = self._s(15 + r // 6)
+            surf = pygame.Surface((bw, bh), pygame.SRCALPHA)
+            pygame.draw.rect(surf, (*color, alpha), (0, 0, bw, bh), width=self._s(3), border_radius=self._s(4))
+            core_w = int(lane_w * 0.8); core_h = max(1, bh // 3)
+            pygame.draw.rect(surf, (255, 255, 255, min(255, alpha)), (r, (bh - core_h) // 2, core_w, core_h), border_radius=self._s(2))
+            self.bar_effect_cache[key] = Texture.from_surface(self.renderer, surf)
+        return self.bar_effect_cache[key]
+
+    def _get_circle_effect_texture(self, color, alpha, r):
+        key = (color, alpha, r)
+        if key not in self.circle_effect_cache:
+            surf = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
+            pygame.draw.circle(surf, (*color, alpha), (r, r), r, self._s(3))
+            core_r = max(1, r // 2)
+            pygame.draw.circle(surf, (255, 255, 255, min(255, alpha * 2)), (r, r), core_r)
+            self.circle_effect_cache[key] = Texture.from_surface(self.renderer, surf)
+        return self.circle_effect_cache[key]
+
+    def _get_text_texture(self, text, is_bold, color, alpha, size_override=None):
+        key = (text, is_bold, color, alpha, size_override)
+        if key not in self.text_cache:
+            if size_override:
+                font = pygame.font.SysFont(None, size_override, bold=is_bold)
+            else:
+                font = self.bold_font if is_bold else self.font
+            surf = font.render(text, True, (*color, alpha))
+            self.text_cache[key] = Texture.from_surface(self.renderer, surf)
+        return self.text_cache[key]
+
+    def _draw_ai_vision(self, x, y, w, h, alpha):
+        if not self.ai_vision_texture or self.ai_vision_texture.width != w or self.ai_vision_texture.height != h:
+            surf = pygame.Surface((w, h), pygame.SRCALPHA)
+            v_color = (0, 255, 255, 255)
+            # Scanner Frame (Dashed)
+            dash = self._s(10); gap = self._s(6)
+            for dx in range(0, w, dash + gap):
+                dw = min(dash, w - dx)
+                pygame.draw.line(surf, v_color, (dx, 0), (dx + dw, 0), 2)
+                pygame.draw.line(surf, v_color, (dx, h - 2), (dx + dw, h - 2), 2)
+            for dy in range(0, h, dash + gap):
+                dh = min(dash, h - dy)
+                pygame.draw.line(surf, v_color, (0, dy), (0, dy + dh), 2)
+                pygame.draw.line(surf, v_color, (w - 2, dy), (w - 2, dy + dh), 2)
+            
+            # Robot Eyes
+            er = self._s(8); ex = self._s(25); ey = h // 2
+            pygame.draw.circle(surf, (255, 255, 255, 255), (w // 2 - ex, ey), er // 2)
+            pygame.draw.circle(surf, (0, 255, 255, 180), (w // 2 - ex, ey), er, 2)
+            pygame.draw.circle(surf, (255, 255, 255, 255), (w // 2 + ex, ey), er // 2)
+            pygame.draw.circle(surf, (0, 255, 255, 180), (w // 2 + ex, ey), er, 2)
+            
+            # Text
+            ai_font = pygame.font.SysFont(None, self._s(22), bold=True)
+            ai_surf = ai_font.render("AI Vision", True, (0, 255, 255, 200))
+            surf.blit(ai_surf, (self._s(8), self._s(5)))
+            
+            if self.ai_vision_texture: self.ai_vision_texture.update(surf)
+            else: self.ai_vision_texture = Texture.from_surface(self.renderer, surf)
+
+        # Glow
+        self.renderer.draw_color = (0, 100, 150, alpha // 6)
+        self.renderer.fill_rect((x, y, w, h))
+        
+        # Frame & Eyes (Blit the pre-rendered texture)
+        self.ai_vision_texture.alpha = alpha
+        self.renderer.blit(self.ai_vision_texture, pygame.Rect(x, y, w, h))
 
     def draw_playing(self, current_time, game_state):
         """
@@ -94,77 +189,37 @@ class GameRenderer:
             self.renderer.draw_color = (255, 80, 80, int(min(255, hit_alpha + 150) * fade_mult))
             self.renderer.draw_rect((lx[0], hit_y - perf_h, ltw, perf_h))
 
+            # AI Vision Area
+            if game_state.get('is_ai'):
+                vh = self._s(120)
+                vy = hit_y - vh
+                self._draw_ai_vision(lx[0], vy, ltw, vh, int(hit_alpha * 0.8 * fade_mult))
+
             # Judgment / Combo Text
             def get_bounce(timer, duration=200):
                 elapsed = current_time - timer
                 if elapsed < 0 or elapsed > duration: return 1.0
-                # Quadratic bounce: starts at 1.4, drops to 1.0
                 t = elapsed / duration
                 return 1.4 - 0.4 * (1 - (1 - t)**2)
 
             if j_text and current_time - j_timer < 500:
-                scale = get_bounce(j_timer)
-                # Render at base size once (or let it be cached by the font object if using same size)
-                surf = self.font.render(j_text, True, j_color)
-                if scale != 1.0:
-                    w, h = surf.get_size()
-                    surf = pygame.transform.smoothscale(surf, (int(w * scale), int(h * scale)))
-                self.offscreen_hud.blit(surf, surf.get_rect(center=(lx[0] + ltw // 2, self.height // 2 - self._s(50))))
+                dt = current_time - j_timer
+                alpha = int(max(0, 255 * (1 - dt / 500)) * fade_mult)
+                if alpha > 0:
+                    tex = self._get_text_texture(j_text, False, j_color, alpha)
+                    scale = get_bounce(j_timer)
+                    tw, th = int(tex.width * scale), int(tex.height * scale)
+                    self.renderer.blit(tex, pygame.Rect(lx[0] + ltw // 2 - tw // 2, self.height // 2 - self._s(50) - th // 2, tw, th))
 
-            # AI Vision Area (Dashed Scanner Frame)
-            if game_state.get('is_ai'):
-                vision_h = self._s(120) # AI vision range
-                vision_y = hit_y - vision_h
-                v_alpha = int(hit_alpha * 0.8) # Slightly softer than judgment pulse
-                v_color = (0, 255, 255, v_alpha) # Neon Cyan
-                
-                # Draw dashed rectangle manually for "scanner" feel
-                dash_len = self._s(10)
-                gap = self._s(6)
-                rect = (lx[0], vision_y, ltw, vision_h)
-                
-                # Top/Bottom dashes
-                for dx in range(0, ltw, dash_len + gap):
-                    d_w = min(dash_len, ltw - dx)
-                    pygame.draw.line(self.offscreen_hud, v_color, (lx[0] + dx, vision_y), (lx[0] + dx + d_w, vision_y), 2)
-                    pygame.draw.line(self.offscreen_hud, v_color, (lx[0] + dx, hit_y), (lx[0] + dx + d_w, hit_y), 2)
-                # Left/Right dashes
-                for dy in range(0, vision_h, dash_len + gap):
-                    d_h = min(dash_len, vision_h - dy)
-                    pygame.draw.line(self.offscreen_hud, v_color, (lx[0], vision_y + dy), (lx[0], vision_y + dy + d_h), 2)
-                    pygame.draw.line(self.offscreen_hud, v_color, (lx[0] + ltw, vision_y + dy), (lx[0] + ltw, vision_y + dy + d_h), 2)
-                
-                # Scanner Glow
-                glow_surf = pygame.Surface((ltw, vision_h), pygame.SRCALPHA)
-                pygame.draw.rect(glow_surf, (0, 100, 150, v_alpha // 4), (0, 0, ltw, vision_h))
-                
-                # ── ADDING ROBOT EYES ──
-                eye_r = self._s(8)
-                eye_x_off = self._s(25)
-                eye_y = vision_h // 2
-                # Left Eye
-                pygame.draw.circle(glow_surf, (255, 255, 255, v_alpha), (ltw // 2 - eye_x_off, eye_y), eye_r // 2)
-                pygame.draw.circle(glow_surf, (0, 255, 255, v_alpha // 2), (ltw // 2 - eye_x_off, eye_y), eye_r, 2)
-                # Right Eye
-                pygame.draw.circle(glow_surf, (255, 255, 255, v_alpha), (ltw // 2 + eye_x_off, eye_y), eye_r // 2)
-                pygame.draw.circle(glow_surf, (0, 255, 255, v_alpha // 2), (ltw // 2 + eye_x_off, eye_y), eye_r, 2)
-                
-                # ── ADDING "AI" TEXT ──
-                ai_font = pygame.font.SysFont(None, self._s(22), bold=True)
-                ai_surf = ai_font.render("AI Vision", True, (0, 255, 255, v_alpha))
-                glow_surf.blit(ai_surf, (self._s(8), self._s(5)))
-                
-                self.offscreen_hud.blit(glow_surf, (lx[0], vision_y))
-            
             c_timer = game_state.get('combo_timer', 0)
             if comb > 0 and current_time - c_timer < 500:
-                scale = get_bounce(c_timer, 150)
-                # Render at base size
-                surf = self.bold_font.render(str(comb), True, (255, 255, 255))
-                if scale != 1.0:
-                    w, h = surf.get_size()
-                    surf = pygame.transform.smoothscale(surf, (int(w * scale), int(h * scale)))
-                self.offscreen_hud.blit(surf, surf.get_rect(center=(lx[0] + ltw // 2, self.height // 2 + self._s(20))))
+                dt = current_time - c_timer
+                alpha = int(max(0, 255 * (1 - dt / 500)) * fade_mult)
+                if alpha > 0:
+                    tex = self._get_text_texture(str(comb), True, (255, 255, 255), alpha)
+                    scale = get_bounce(c_timer, 150)
+                    tw, th = int(tex.width * scale), int(tex.height * scale)
+                    self.renderer.blit(tex, pygame.Rect(lx[0] + ltw // 2 - tw // 2, self.height // 2 + self._s(20) - th // 2, tw, th))
 
         # Notes
         held_ln_ids = [id(n) for n in game_state.get('held_lns', []) if n is not None]
@@ -226,36 +281,8 @@ class GameRenderer:
                         self.renderer.draw_color = (255, 255, 255, int(110 * (alpha/255)))
                         self.renderer.draw_line((bx, by + bh // 2), (bx + bw, by + bh // 2))
                     else: # ── Circle View ──
-                        # Balanced size (80% of lane width)
-                        cr = int(lane_w * 0.4)
-                        cx, cy = nx + lane_w // 2, ny + note_h // 2
-                        
-                        # Use a Surface for the head to get clean rounding and shadows
-                        surf = pygame.Surface((lane_w, lane_w), pygame.SRCALPHA)
-                        
-                        # 1. Circular Shadow (slight offset, low opacity)
-                        shadow_color = (0, 0, 0, int(160 * (alpha/255)))
-                        pygame.draw.circle(surf, shadow_color, (lane_w // 2, lane_w // 2 + 2), cr)
-                        
-                        # 2. Main Body
-                        pygame.draw.circle(surf, (*color, alpha), (lane_w // 2, lane_w // 2), cr)
-                        
-                        # 3. Top highlight arc/circle
-                        pygame.draw.circle(surf, (255, 255, 255, int(160 * (alpha/255))), (lane_w // 2, lane_w // 2 - 1), cr - 1, 3)
-                        
-                        # 4. INNER SMALL CIRCLE (Requested by user)
-                        pygame.draw.circle(surf, (255, 255, 255, int(110 * (alpha/255))), (lane_w // 2, lane_w // 2), cr // 3, 2)
-                        
-                        tex = Texture.from_surface(self.renderer, surf)
-                        target_rect = pygame.Rect(nx, ny + note_h // 2 - lane_w // 2, lane_w, lane_w)
-                        self.renderer.blit(tex, target_rect)
-
-        # HUD blit
-        if not self.hud_texture:
-            self.hud_texture = Texture.from_surface(self.renderer, self.offscreen_hud)
-        else:
-            self.hud_texture.update(self.offscreen_hud)
-        self.renderer.blit(self.hud_texture, pygame.Rect(0, 0, self.width, self.height))
+                        tex = self._get_circle_note_texture(color, alpha, lane_w)
+                        self.renderer.blit(tex, pygame.Rect(nx, ny + note_h // 2 - lane_w // 2, lane_w, lane_w))
 
     def draw_bga(self, current_time, bid, assets):
         tex = None
@@ -316,126 +343,88 @@ class GameRenderer:
             ty = self._s(500 - 10) 
             
             if note_type == 0: # ── Bar Effect ──
-                # Simplified rectangular burst to match circle intensity
-                # Narrower width (80%) and taller height to match new design
-                bw = int(lane_w * 0.8) + r * 2
-                bh = self._s(15 + r // 6) # Increased height
-                surf = pygame.Surface((bw, bh), pygame.SRCALPHA)
-                
-                # 1. Main Frame (Rectangular outline)
-                pygame.draw.rect(surf, (*eff['color'], eff['alpha']), (0, 0, bw, bh), width=self._s(3), border_radius=self._s(4))
-                # 2. Bright Core
-                core_w = int(lane_w * 0.8)
-                core_h = max(1, bh // 3)
-                pygame.draw.rect(surf, (255, 255, 255, min(255, eff['alpha'])), (r, (bh - core_h) // 2, core_w, core_h), border_radius=self._s(2))
-                
-                tex = Texture.from_surface(self.renderer, surf)
-                self.renderer.blit(tex, pygame.Rect(tx - bw // 2, ty - bh // 2, bw, bh))
+                tex = self._get_bar_effect_texture(eff['color'], eff['alpha'], r, lane_w)
+                self.renderer.blit(tex, pygame.Rect(tx - tex.width // 2, ty - tex.height // 2, tex.width, tex.height))
                 
             else: # ── Circle Effect ──
-                surf = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
-                pygame.draw.circle(surf, (*eff['color'], eff['alpha']), (r, r), r, self._s(3))
-                core_r = max(1, r // 2)
-                pygame.draw.circle(surf, (255, 255, 255, min(255, eff['alpha'] * 2)), (r, r), core_r)
-                
-                tex = Texture.from_surface(self.renderer, surf)
+                tex = self._get_circle_effect_texture(eff['color'], eff['alpha'], r)
                 self.renderer.blit(tex, pygame.Rect(tx - r, ty - r, r*2, r*2))
 
     def draw_result(self, stats):
-        """
-        stats keys:
-        - mode (single/ai_multi)
-        - title (str)
-        - metadata (dict)
-        - judgments (dict)
-        - max_combo (int)
-        - ai_judgments (dict, optional)
-        - ai_max_combo (int, optional)
-        - cover_texture (Texture, optional)
-        """
         def calc_score(judgs):
             return judgs["PERFECT"] * 1000 + judgs["GREAT"] * 500 + judgs["GOOD"] * 200
 
         score_h = calc_score(stats['judgments'])
         score_ai = calc_score(stats['ai_judgments']) if stats['mode'] == 'ai_multi' else 0
 
-        self.offscreen_hud.fill((20, 20, 35, 200)) # Semi-transparent background
-        if stats.get('cover_texture'):
-            # This is tricky since we need a Surface for blitting to offscreen_hud if we want darkness
-            # But the renderer is GPU based. 
-            # For simplicity in result screen, we might just use solid colors or clear the main renderer.
-            pass
+        # Background tint (GPU)
+        self.renderer.draw_blend_mode = 1 # Blend
+        self.renderer.draw_color = (20, 20, 35, 220)
+        self.renderer.fill_rect((0, 0, self.width, self.height))
 
         if stats['mode'] == 'ai_multi':
-            title_font = pygame.font.SysFont(None, self._s(40), bold=True)
-            t_surf = title_font.render(stats['title'], True, (255, 255, 255))
-            self.offscreen_hud.blit(t_surf, t_surf.get_rect(center=(self.width // 2, self._s(30))))
-            
             p1_win = score_h >= score_ai
             win_txt = "YOU WIN!" if p1_win else "AI BOT WINS"
             win_color = (0, 255, 255) if p1_win else (255, 50, 50)
-            banner_font = pygame.font.SysFont(None, self._s(80), bold=True)
-            bs = banner_font.render(win_txt, True, win_color)
-            self.offscreen_hud.blit(bs, bs.get_rect(center=(self.width // 2, self._s(120))))
+            
+            # Title
+            t_tex = self._get_text_texture(stats['title'], True, (255, 255, 255), 255, size_override=self._s(40))
+            self.renderer.blit(t_tex, pygame.Rect(self.width // 2 - t_tex.width // 2, self._s(10), t_tex.width, t_tex.height))
+            
+            # Win/Loss Banner
+            bs_tex = self._get_text_texture(win_txt, True, win_color, 255, size_override=self._s(80))
+            self.renderer.blit(bs_tex, pygame.Rect(self.width // 2 - bs_tex.width // 2, self._s(80), bs_tex.width, bs_tex.height))
         else:
-            res_font = pygame.font.SysFont(None, self._s(64))
-            t = res_font.render("RESULT", True, (255, 255, 255))
-            self.offscreen_hud.blit(t, t.get_rect(center=(self.width // 2, self._s(80))))
+            t_tex = self._get_text_texture("RESULT", True, (255, 255, 255), 255, size_override=self._s(64))
+            self.renderer.blit(t_tex, pygame.Rect(self.width // 2 - t_tex.width // 2, self._s(50), t_tex.width, t_tex.height))
 
         y_start = self._s(220)
-        y = y_start
         p1_x = self._sx(100)
-        p1_title = self.font.render("PLAYER", True, (100, 200, 255))
-        self.offscreen_hud.blit(p1_title, (p1_x, y - self._s(40)))
+        
+        # Player Section
+        p1_title = self._get_text_texture("PLAYER", True, (100, 200, 255), 255)
+        self.renderer.blit(p1_title, pygame.Rect(p1_x, y_start - self._s(40), p1_title.width, p1_title.height))
 
+        y = y_start
         for key in JUDGMENT_ORDER:
             color = JUDGMENT_DEFS[key]["color"]
-            text = self.font.render(f"{key}: {stats['judgments'][key]}", True, color)
-            self.offscreen_hud.blit(text, (p1_x, y))
+            text = self._get_text_texture(f"{key}: {stats['judgments'][key]}", False, color, 255)
+            self.renderer.blit(text, pygame.Rect(p1_x, y, text.width, text.height))
             y += self._s(50)
             
-        combo_text = self.font.render(f"MAX COMBO: {stats['max_combo']}", True, (255, 255, 255))
-        self.offscreen_hud.blit(combo_text, (p1_x, y + self._s(20)))
-        score_text = self.font.render(f"SCORE: {score_h:,}", True, (255, 255, 0))
-        self.offscreen_hud.blit(score_text, (p1_x, y + self._s(70)))
+        combo_text = self._get_text_texture(f"MAX COMBO: {stats['max_combo']}", False, (255, 255, 255), 255)
+        self.renderer.blit(combo_text, pygame.Rect(p1_x, y + self._s(20), combo_text.width, combo_text.height))
+        score_text = self._get_text_texture(f"SCORE: {score_h:,}", True, (255, 255, 0), 255)
+        self.renderer.blit(score_text, pygame.Rect(p1_x, y + self._s(70), score_text.width, score_text.height))
 
         if stats['mode'] == 'ai_multi':
-            y = y_start
             ai_x = self._sx(460)
-            ai_title = self.font.render("AI BOT", True, (255, 100, 100))
-            self.offscreen_hud.blit(ai_title, (ai_x, y - self._s(40)))
+            ai_title = self._get_text_texture("AI BOT", True, (255, 100, 100), 255)
+            self.renderer.blit(ai_title, pygame.Rect(ai_x, y_start - self._s(40), ai_title.width, ai_title.height))
+            
+            y = y_start
             for key in JUDGMENT_ORDER:
                 color = JUDGMENT_DEFS[key]["color"]
-                ai_text = self.font.render(f"{key}: {stats['ai_judgments'][key]}", True, color)
-                self.offscreen_hud.blit(ai_text, (ai_x, y))
+                ai_text = self._get_text_texture(f"{key}: {stats['ai_judgments'][key]}", False, color, 255)
+                self.renderer.blit(ai_text, pygame.Rect(ai_x, y, ai_text.width, ai_text.height))
                 y += self._s(50)
-            ai_ct = self.font.render(f"MAX COMBO: {stats['ai_max_combo']}", True, (255, 255, 255))
-            self.offscreen_hud.blit(ai_ct, (ai_x, y + self._s(20)))
-            ai_score_text = self.font.render(f"SCORE: {score_ai:,}", True, (255, 255, 0))
-            self.offscreen_hud.blit(ai_score_text, (ai_x, y + self._s(70)))
+            ai_ct = self._get_text_texture(f"MAX COMBO: {stats['ai_max_combo']}", False, (255, 255, 255), 255)
+            self.renderer.blit(ai_ct, pygame.Rect(ai_x, y + self._s(20), ai_ct.width, ai_ct.height))
+            ai_score_text = self._get_text_texture(f"SCORE: {score_ai:,}", True, (255, 255, 0), 255)
+            self.renderer.blit(ai_score_text, pygame.Rect(ai_x, y + self._s(70), ai_score_text.width, ai_score_text.height))
         else:
-            right_x = self._sx(540)
-            y = self._s(180)
-            meta_font = pygame.font.SysFont(None, self._s(40))
-            small_meta_font = pygame.font.SysFont(None, self._s(28))
-            t_surf = meta_font.render(stats['title'], True, (255, 255, 255))
-            self.offscreen_hud.blit(t_surf, (right_x, y))
+            right_x = self._sx(500)
+            y = self._s(200)
+            t_tex = self._get_text_texture(stats['title'], True, (255, 255, 255), 255, size_override=self._s(32))
+            self.renderer.blit(t_tex, pygame.Rect(right_x, y, t_tex.width, t_tex.height))
             y += self._s(50)
             for key, label in [("artist", "Artist"), ("genre", "Genre"), ("level", "Level")]:
                 val = stats['metadata'].get(key)
                 if val and str(val) not in ('Unknown', '0'):
-                    s = small_meta_font.render(f"{label}: {val}", True, (200, 220, 240))
-                    self.offscreen_hud.blit(s, (right_x, y))
+                    s = self._get_text_texture(f"{label}: {val}", False, (200, 220, 240), 255, size_override=self._s(24))
+                    self.renderer.blit(s, pygame.Rect(right_x, y, s.width, s.height))
                     y += self._s(32)
 
-        info_font = pygame.font.SysFont(None, self._s(24))
-        it = info_font.render("Press ENTER or ESC to Return", True, (150, 150, 150))
-        self.offscreen_hud.blit(it, it.get_rect(center=(self.width // 2, self.height - self._s(40))))
-
-        if not self.hud_texture:
-            self.hud_texture = Texture.from_surface(self.renderer, self.offscreen_hud)
-        else:
-            self.hud_texture.update(self.offscreen_hud)
-        # self.renderer.clear() # Removed to keep BGA visible
-        self.renderer.blit(self.hud_texture, pygame.Rect(0, 0, self.width, self.height))
-        self.renderer.present()
+        info_text = self._get_text_texture("Press ENTER or ESC to Return", False, (150, 150, 150), 255, size_override=self._s(20))
+        self.renderer.blit(info_text, pygame.Rect(self.width // 2 - info_text.width // 2, self.height - self._s(40), info_text.width, info_text.height))
+        # Note: Do NOT call present() here. RhythmGame.run calls it.

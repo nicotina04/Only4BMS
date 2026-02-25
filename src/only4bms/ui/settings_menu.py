@@ -11,7 +11,7 @@ COLOR_PANEL_BG = (15, 15, 25, 230)
 
 BASE_W, BASE_H = 800, 600
 MAX_CHOICE_NAME_LEN = 30
-INT_KEYS = frozenset(("fps", "audio_freq", "audio_buffer", "audio_channels"))
+INT_KEYS = frozenset(("fps", "audio_freq", "audio_buffer", "audio_channels", "input_polling_rate", "visual_offset"))
 
 
 class SettingsMenu:
@@ -38,6 +38,7 @@ class SettingsMenu:
             # SYSTEM Category
             {"type": "category", "label": "SYSTEM"},
             {"key": "fps",             "label": "FPS Limit",             "step": 10,  "min": 30,    "max": 360},
+            {"key": "input_polling_rate", "label": "Input Polling (Hz)", "step": 100, "min": 125,   "max": 2000},
             {"key": "fullscreen",      "label": "Fullscreen",            "type": "choice", "choices_key": "_fullscreen_opts"},
             {"key": "audio_device_idx","label": "Audio Device",          "type": "choice", "choices_key": "audio_devices"},
             
@@ -51,6 +52,7 @@ class SettingsMenu:
             # GAMEPLAY Category
             {"type": "category", "label": "GAMEPLAY"},
             {"key": "speed",           "label": "Scroll Speed",          "step": 0.1, "min": 0.1,   "max": 2.0},
+            {"key": "visual_offset",   "label": "Visual Offset (ms)",    "step": 1,   "min": -200,  "max": 200},
             {"key": "hit_window_mult", "label": "Hit Window Multiplier", "step": 0.1, "min": 0.5,   "max": 3.0},
             {"key": "judge_delay",     "label": "Judge Delay (ms)",     "step": 1,   "min": -200,  "max": 200},
             {"key": "note_type",       "label": "Note Appearance (Player)", "type": "choice", "choices_key": "_note_type_opts"},
