@@ -64,6 +64,33 @@ class MainMenu:
             })
         self.bg_judgments = [] # List of {lane, timer} for hit effects
 
+        # Version handling
+        def get_version():
+            # 1. Try pyproject.toml in project root for development
+            try:
+                import tomllib
+                import os
+                curr_dir = os.path.dirname(os.path.abspath(__file__))
+                for _ in range(5):
+                    toml_path = os.path.join(curr_dir, "pyproject.toml")
+                    if os.path.exists(toml_path):
+                        with open(toml_path, "rb") as f:
+                            data = tomllib.load(f)
+                            return f"v{data['project']['version']}"
+                    parent = os.path.dirname(curr_dir)
+                    if parent == curr_dir: break
+                    curr_dir = parent
+            except Exception:
+                pass
+            # 2. Try installed package metadata
+            try:
+                from importlib.metadata import version
+                return f"v{version('only4bms')}"
+            except Exception:
+                pass
+            return "OSS version" # Final fallback
+        self.version_str = get_version()
+
     def _s(self, v):
         return max(1, int(v * self.sy))
 
@@ -278,9 +305,12 @@ class MainMenu:
             ly = item_rect.centery - label_surf.get_height() // 2
             self.screen.blit(label_surf, (self._cx(label_surf), ly))
             
-        # 5. Bottom Copyright
+        # 5. Bottom Copyright & Version
         copy_surf = self.small_font.render("© 2026 Only4BMS", True, (100, 100, 120))
         self.screen.blit(copy_surf, (self._cx(copy_surf), self.h - self._s(40)))
+
+        version_surf = self.small_font.render(self.version_str, True, (100, 100, 120))
+        self.screen.blit(version_surf, (self.w - version_surf.get_width() - self._s(20), self.h - self._s(40)))
 
         if self.show_quit_confirm:
             self._draw_quit_confirm()
