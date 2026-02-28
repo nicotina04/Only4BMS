@@ -152,6 +152,12 @@ def load_settings():
                     print("Migrating legacy joystick settings...")
                     saved["joystick_keys"] = DEFAULT_SETTINGS["joystick_keys"]
                 
+                # Migration: if note_type is string "Bar" or "Circle", convert to 0 or 1
+                if "note_type" in saved and isinstance(saved["note_type"], str):
+                    saved["note_type"] = 1 if saved["note_type"] == "Circle" else 0
+                if "ai_note_type" in saved and isinstance(saved["ai_note_type"], str):
+                    saved["ai_note_type"] = 1 if saved["ai_note_type"] == "Circle" else 0
+                
                 settings.update(saved)
         except Exception as e:
             print(f"Warning: Failed to load settings ({e})")
