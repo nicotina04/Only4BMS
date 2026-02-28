@@ -181,7 +181,7 @@ class RhythmGame:
                 'radius': 22,
                 'color': j["color"],
                 'alpha': 160,
-                'note_type': self.settings.get('note_type', 0)
+                'note_type': self.settings.get('ai_note_type', 0)
             })
         else:
             self.ai_hit_history.append((t, 0, "MISS"))
@@ -391,6 +391,13 @@ class RhythmGame:
                                     'lane': lane, 'radius': 22, 'color': (0, 255, 255), 'alpha': 160,
                                     'note_type': self.settings.get('note_type', 0)
                                 })
+                        if self.mode == 'ai_multi':
+                            for lane, note in enumerate(self.ai_engine.held_lns):
+                                if note:
+                                    self.effects.append({
+                                        'lane': lane + NUM_LANES, 'radius': 22, 'color': (0, 255, 255), 'alpha': 160,
+                                        'note_type': self.settings.get('ai_note_type', 0)
+                                    })
                     # Pass offset time to draw for visual adjustment
                     self._draw(now_ms + vis_offset)
                 elif self.state == "PAUSED":

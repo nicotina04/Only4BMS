@@ -419,9 +419,9 @@ class SongSelectMenu:
         elif key == pygame.K_t: # Toggle Note Type
             mods = pygame.key.get_mods()
             if mods & pygame.KMOD_SHIFT:
-                self.settings['ai_note_type'] = "Circle" if self.settings.get('ai_note_type', "Bar") == "Bar" else "Bar"
+                self.settings['ai_note_type'] = 1 if self.settings.get('ai_note_type', 0) == 0 else 0
             else:
-                self.settings['note_type'] = "Circle" if self.settings.get('note_type', "Bar") == "Bar" else "Bar"
+                self.settings['note_type'] = 1 if self.settings.get('note_type', 0) == 0 else 0
         elif key == pygame.K_F3 or key == pygame.K_b: # Search BMS
             self.search_mode = True
             self.search_query = ""
@@ -449,8 +449,8 @@ class SongSelectMenu:
                 if action == "SPEED": 
                     delta = -0.1 if button == 1 else 0.1
                     self.settings['speed'] = max(0.1, min(2.0, self.settings.get('speed', 1.0) + delta))
-                elif action == "TYPE": self.settings['note_type'] = "Circle" if self.settings.get('note_type', "Bar") == "Bar" else "Bar"
-                elif action == "AI_TYPE": self.settings['ai_note_type'] = "Circle" if self.settings.get('ai_note_type', "Bar") == "Bar" else "Bar"
+                elif action == "TYPE": self.settings['note_type'] = 1 if self.settings.get('note_type', 0) == 0 else 0
+                elif action == "AI_TYPE": self.settings['ai_note_type'] = 1 if self.settings.get('ai_note_type', 0) == 0 else 0
                 return
 
         for btn_rect, btn_action in self._nav_buttons:
@@ -795,7 +795,7 @@ class SongSelectMenu:
         y += iy
         
         # Player Note Type
-        n_type = "CIRCLE" if self.settings.get('note_type', 0) == "Circle" else "BAR"
+        n_type = "CIRCLE" if self.settings.get('note_type', 0) == 1 else "BAR"
         t_rect = pygame.Rect(cx, y, panel_w - 40, iy)
         if t_rect.collidepoint(mx, my):
             pygame.draw.rect(self.screen, COLOR_HOVERED_BG, t_rect, border_radius=5)
@@ -804,7 +804,7 @@ class SongSelectMenu:
         y += iy
         
         # AI Note Type
-        ai_n_type = "CIRCLE" if self.settings.get('ai_note_type', 0) == "Circle" else "BAR"
+        ai_n_type = "CIRCLE" if self.settings.get('ai_note_type', 0) == 1 else "BAR"
         a_rect = pygame.Rect(cx, y, panel_w - 40, iy)
         if a_rect.collidepoint(mx, my):
             pygame.draw.rect(self.screen, COLOR_HOVERED_BG, a_rect, border_radius=5)
