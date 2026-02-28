@@ -95,25 +95,27 @@ class GameRenderer:
             self.ln_body_cache[key] = Texture.from_surface(self.renderer, surf)
         return self.ln_body_cache[key]
 
-    def _get_bar_effect_texture(self, color, r, lane_w):
-        key = (color, r, lane_w)
+    def _get_bar_effect_texture(self, color, lane_w):
+        key = (color, lane_w)
         if key not in self.bar_effect_cache:
-            bw = int(lane_w * 0.8) + r * 2
-            bh = self._s(15 + r // 6)
+            base_r = self._s(50)
+            bw = int(lane_w * 0.8) + base_r * 2
+            bh = self._s(15 + base_r // 6)
             surf = pygame.Surface((bw, bh), pygame.SRCALPHA)
             pygame.draw.rect(surf, (*color, 255), (0, 0, bw, bh), width=self._s(3), border_radius=self._s(4))
             core_w = int(lane_w * 0.8); core_h = max(1, bh // 3)
-            pygame.draw.rect(surf, (255, 255, 255, 255), (r, (bh - core_h) // 2, core_w, core_h), border_radius=self._s(2))
+            pygame.draw.rect(surf, (255, 255, 255, 255), (base_r, (bh - core_h) // 2, core_w, core_h), border_radius=self._s(2))
             self.bar_effect_cache[key] = Texture.from_surface(self.renderer, surf)
         return self.bar_effect_cache[key]
 
-    def _get_circle_effect_texture(self, color, r):
-        key = (color, r)
+    def _get_circle_effect_texture(self, color):
+        key = color
         if key not in self.circle_effect_cache:
-            surf = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
-            pygame.draw.circle(surf, (*color, 255), (r, r), r, self._s(3))
-            core_r = max(1, r // 2)
-            pygame.draw.circle(surf, (255, 255, 255, 255), (r, r), core_r)
+            base_r = self._s(50)
+            surf = pygame.Surface((base_r * 2, base_r * 2), pygame.SRCALPHA)
+            pygame.draw.circle(surf, (*color, 255), (base_r, base_r), base_r, self._s(3))
+            core_r = max(1, base_r // 2)
+            pygame.draw.circle(surf, (255, 255, 255, 255), (base_r, base_r), core_r)
             self.circle_effect_cache[key] = Texture.from_surface(self.renderer, surf)
         return self.circle_effect_cache[key]
 
@@ -527,12 +529,14 @@ class GameRenderer:
             ty = self._s(500 - 10) 
             
             if note_type == 0: # ── Bar Effect ──
-                tex = self._get_bar_effect_texture(eff['color'], r, lane_w)
+                tex = self._get_bar_effect_texture(eff['color'], lane_w)
                 tex.alpha = eff['alpha']
-                self.renderer.blit(tex, pygame.Rect(tx - tex.width // 2, ty - tex.height // 2, tex.width, tex.height))
+                bw = int(lane_w * 0.8) + r * 2
+                bh = self._s(15 + r // 6)
+                self.renderer.blit(tex, pygame.Rect(tx - bw // 2, ty - bh // 2, bw, bh))
                 
             else: # ── Circle Effect ──
-                tex = self._get_circle_effect_texture(eff['color'], r)
+                tex = self._get_circle_effect_texture(eff['color'])
                 tex.alpha = eff['alpha']
                 self.renderer.blit(tex, pygame.Rect(tx - r, ty - r, r*2, r*2))
 

@@ -32,9 +32,9 @@ class SongSelectMenu:
         self.window = window
         self.mode = mode
         self.ai_difficulties = ['normal', 'hard']
-        self.ai_diff_idx = 0
+        self.ai_diff_idx = settings.get('ai_diff_idx', 0)
         self.note_mods = ['None', 'Mirror', 'Random']
-        self.note_mod_idx = 0
+        self.note_mod_idx = settings.get('note_mod_idx', 0)
         
         self.w, self.h = self.window.size
         self.sx, self.sy = self.w / BASE_W, self.h / BASE_H
@@ -89,6 +89,19 @@ class SongSelectMenu:
         self.song_groups = []
         self.scan_songs()
         
+        last_path = self.settings.get('last_hovered_path')
+        if last_path:
+            for g_idx, group in enumerate(self.song_groups):
+                found = False
+                for c_idx, chart in enumerate(group.get('charts', [])):
+                    if chart.get('filepath') == last_path:
+                        self.selected_group_idx = g_idx
+                        self.selected_chart_idx = c_idx
+                        self.scroll_offset = max(0, g_idx - 2)
+                        found = True
+                        break
+                if found: break
+                
         self.last_previewed_path = None
 
     def _s(self, v):
@@ -323,6 +336,17 @@ class SongSelectMenu:
             
         pygame.key.set_repeat(0)
         pygame.mixer.music.stop()
+        
+        # Save state to settings
+        if self.song_groups and self.selected_group_idx < len(self.song_groups):
+            group = self.song_groups[self.selected_group_idx]
+            charts = group.get('charts', [])
+            if self.selected_chart_idx < len(charts):
+                self.settings['last_hovered_path'] = charts[self.selected_chart_idx]['filepath']
+                
+        self.settings['ai_diff_idx'] = self.ai_diff_idx
+        self.settings['note_mod_idx'] = self.note_mod_idx
+        
         return self.action, self.selected_song_path, self.ai_difficulties[self.ai_diff_idx], self.note_mods[self.note_mod_idx]
 
     # ── Event handling ───────────────────────────────────────────────────

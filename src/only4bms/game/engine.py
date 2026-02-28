@@ -100,34 +100,36 @@ class GameEngine:
     
     def get_visual_time(self, current_real_time):
         """Calculate visual time (scroll position) from real time."""
-        # Find segment in visual_timing_map where start_real <= current_real_time
-        # [(start_real, start_visual, factor), ...] sorted by start_real
-        best_seg = self.visual_timing_map[0]
-        for seg in self.visual_timing_map:
-            if seg[0] <= current_real_time:
-                best_seg = seg
+        if not hasattr(self, '_vt_idx'): self._vt_idx = 0
+        
+        while self._vt_idx < len(self.visual_timing_map) - 1:
+            if self.visual_timing_map[self._vt_idx + 1][0] <= current_real_time:
+                self._vt_idx += 1
             else:
                 break
         
-        start_real, start_visual, factor = best_seg
+        while self._vt_idx > 0 and self.visual_timing_map[self._vt_idx][0] > current_real_time:
+            self._vt_idx -= 1
+            
+        start_real, start_visual, factor = self.visual_timing_map[self._vt_idx]
         return start_visual + (current_real_time - start_real) * factor
 
     def get_observation(self, current_time, lane, jitter=0.0, is_pressed=False):
         """Constructs a 3-feature observation for the AI model."""
         miss_window = JUDGMENT_DEFS["MISS"]["threshold_ms"] * self.hw_mult
-        active_notes = [
-            n for n in self.notes 
-            if 'hit' not in n and 'miss' not in n and (n['time_ms'] - current_time) <= 1000.0
-        ]
         
         obs = np.ones(3, dtype=np.float32) # Default far away
         ttns = []
-        for n in active_notes:
-            if n['lane'] == lane:
+        for i in range(self.note_idx, len(self.notes)):
+            n = self.notes[i]
+            if n['time_ms'] - current_time > 1000.0:
+                break
+            if n['lane'] == lane and 'hit' not in n and 'miss' not in n:
                 p_ttn = (n['time_ms'] - current_time)
                 if jitter > 0: p_ttn += np.random.normal(0, jitter)
                 if p_ttn >= -miss_window:
                     ttns.append(p_ttn)
+                    
         ttns.sort()
         if ttns: obs[0] = ttns[0] / 1000.0
         if len(ttns) > 1: obs[1] = ttns[1] / 1000.0
