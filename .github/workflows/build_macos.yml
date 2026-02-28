@@ -16,7 +16,7 @@ jobs:
           - os: macos-latest
             arch: ARM
             artifact_name: Only4BMS-Mac-ARM
-          - os: macos-15
+          - os: macos-15-intel
             arch: Intel
             artifact_name: Only4BMS-Mac-Intel
     steps:
