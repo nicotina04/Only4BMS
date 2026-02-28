@@ -5,7 +5,7 @@ import pygame
 import copy
 import math
 import numpy as np
-from pygame._sdl2.video import Texture
+
 from .constants import *
 from .assets import AssetLoader
 from .engine import GameEngine
@@ -34,6 +34,10 @@ class RhythmGame:
         self.speed = self.settings.get('speed', 1.0) * (self.height / BASE_H)
         self.lane_w = int(LANE_W * (self.width / BASE_W))
         self.lane_total_w = NUM_LANES * self.lane_w
+        
+        # Cache frequently accessed settings
+        self.note_type = self.settings.get('note_type', 0)
+        self.ai_note_type = self.settings.get('ai_note_type', 0)
         
         # Lane grouping
         if self.mode == 'single':
@@ -160,7 +164,7 @@ class RhythmGame:
         if lane is not None:
             self.effects.append({
                 'lane': lane, 'radius': 30, 'color': j["color"], 'alpha': 255,
-                'note_type': self.settings.get('note_type', 0)
+                'note_type': self.note_type
             })
 
     def set_ai_judgment(self, key, lane, t=None, timing_diff=0):
@@ -181,7 +185,7 @@ class RhythmGame:
                 'radius': 22,
                 'color': j["color"],
                 'alpha': 160,
-                'note_type': self.settings.get('ai_note_type', 0)
+                'note_type': self.ai_note_type
             })
         else:
             self.ai_hit_history.append((t, 0, "MISS"))
@@ -389,14 +393,15 @@ class RhythmGame:
                             if note:
                                 self.effects.append({
                                     'lane': lane, 'radius': 22, 'color': (0, 255, 255), 'alpha': 160,
-                                    'note_type': self.settings.get('note_type', 0)
+                                    'note_type': self.note_type
                                 })
-                        if self.mode == 'ai_multi':
+                        # AI LN effects at half frequency (every 8 frames)
+                        if self.mode == 'ai_multi' and self.frame_count % 8 == 0:
                             for lane, note in enumerate(self.ai_engine.held_lns):
                                 if note:
                                     self.effects.append({
                                         'lane': lane + NUM_LANES, 'radius': 22, 'color': (0, 255, 255), 'alpha': 160,
-                                        'note_type': self.settings.get('ai_note_type', 0)
+                                        'note_type': self.ai_note_type
                                     })
                     # Pass offset time to draw for visual adjustment
                     self._draw(now_ms + vis_offset)
@@ -481,45 +486,55 @@ class RhythmGame:
     def _get_draw_state(self, side, t):
         d = self._draw_state_cache[side]
         if side == 'p1':
-            d.update({
-                'lane_x': self.lane_x, 'notes': self.engine.notes, 'note_idx': self.engine.note_idx, 'lane_pressed': self.lane_pressed,
-                'judgments': self.judgments, 'combo': self.combo, 
-                'judgment_text': self.judgment_text, 'judgment_key': self.judgment_key,
-                'judgment_color': self.judgment_color, 'judgment_timer': self.judgment_timer,
-                'judgment_err': self.judgment_err, 'judgment_err_timer': self.judgment_err_timer,
-                'jitter_history': self.jitter_history,
-                'hit_history': self.hit_history,
-                'max_time': self.engine.max_time,
-                'total_notes': len(self.engine.notes),
-                'combo_timer': self.combo_timer,
-                'lane_total_w': self.lane_total_w, 'speed': self.speed, 'hw_mult': self.hw_mult,
-                'held_lns': self.engine.held_lns, 'current_visual_time': self.engine.get_visual_time(t),
-                'all_notes_passed': self.engine.all_notes_passed,
-                'all_notes_passed_time': self.engine.all_notes_passed_time,
-                'note_type': self.settings.get('note_type', 0),
-                'is_ai': False
-            })
+            d['lane_x'] = self.p1_lane_x if self.mode == 'ai_multi' else self.lane_x
+            d['notes'] = self.engine.notes
+            d['note_idx'] = self.engine.note_idx
+            d['lane_pressed'] = self.lane_pressed
+            d['judgments'] = self.judgments
+            d['combo'] = self.combo
+            d['judgment_text'] = self.judgment_text
+            d['judgment_key'] = self.judgment_key
+            d['judgment_color'] = self.judgment_color
+            d['judgment_timer'] = self.judgment_timer
+            d['judgment_err'] = self.judgment_err
+            d['judgment_err_timer'] = self.judgment_err_timer
+            d['jitter_history'] = self.jitter_history
+            d['combo_timer'] = self.combo_timer
+            d['lane_total_w'] = self.lane_total_w
+            d['speed'] = self.speed
+            d['hw_mult'] = self.hw_mult
+            d['held_lns'] = self.engine.held_lns
+            d['current_visual_time'] = self.engine.get_visual_time(t)
+            d['all_notes_passed'] = self.engine.all_notes_passed
+            d['all_notes_passed_time'] = self.engine.all_notes_passed_time
+            d['note_type'] = self.note_type
+            d['is_ai'] = False
             if self.mode == 'ai_multi':
-                d.update({
-                    'lane_x': self.p1_lane_x,
-                    'ai_judgments': self.ai_judgments,
-                    'ai_hit_history': getattr(self, 'ai_hit_history', []),
-                })
-        else: # side == 'ai'
-            d.update({
-                'lane_x': self.p2_lane_x, 'notes': self.ai_notes, 'note_idx': self.ai_engine.note_idx, 'lane_pressed': self.ai_lane_pressed,
-                'judgments': self.ai_judgments, 'combo': self.ai_combo, 
-                'judgment_text': self.ai_judgment_text, 'judgment_key': getattr(self, 'ai_judgment_key', ''),
-                'judgment_color': self.ai_judgment_color, 'judgment_timer': self.ai_judgment_timer,
-                'judgment_err': getattr(self, 'ai_judgment_err', 0), 'judgment_err_timer': getattr(self, 'ai_judgment_err_timer', 0),
-                'combo_timer': self.ai_combo_timer,
-                'lane_total_w': self.lane_total_w, 'speed': self.speed, 'hw_mult': self.hw_mult,
-                'held_lns': self.ai_engine.held_lns, 'current_visual_time': self.ai_engine.get_visual_time(t),
-                'all_notes_passed': self.ai_engine.all_notes_passed,
-                'all_notes_passed_time': self.ai_engine.all_notes_passed_time,
-                'note_type': self.settings.get('ai_note_type', 0),
-                'is_ai': True
-            })
+                d['ai_judgments'] = self.ai_judgments
+                d['ai_hit_history'] = self.ai_hit_history
+        else:  # side == 'ai'
+            d['lane_x'] = self.p2_lane_x
+            d['notes'] = self.ai_notes
+            d['note_idx'] = self.ai_engine.note_idx
+            d['lane_pressed'] = self.ai_lane_pressed
+            d['judgments'] = self.ai_judgments
+            d['combo'] = self.ai_combo
+            d['judgment_text'] = self.ai_judgment_text
+            d['judgment_key'] = getattr(self, 'ai_judgment_key', '')
+            d['judgment_color'] = self.ai_judgment_color
+            d['judgment_timer'] = self.ai_judgment_timer
+            d['judgment_err'] = getattr(self, 'ai_judgment_err', 0)
+            d['judgment_err_timer'] = getattr(self, 'ai_judgment_err_timer', 0)
+            d['combo_timer'] = self.ai_combo_timer
+            d['lane_total_w'] = self.lane_total_w
+            d['speed'] = self.speed
+            d['hw_mult'] = self.hw_mult
+            d['held_lns'] = self.ai_engine.held_lns
+            d['current_visual_time'] = self.ai_engine.get_visual_time(t)
+            d['all_notes_passed'] = self.ai_engine.all_notes_passed
+            d['all_notes_passed_time'] = self.ai_engine.all_notes_passed_time
+            d['note_type'] = self.ai_note_type
+            d['is_ai'] = True
         return d
 
     def _draw_paused(self):
@@ -527,19 +542,15 @@ class RhythmGame:
         self.renderer.draw_color = (0, 0, 0, 150)
         self.renderer.fill_rect((0, 0, self.width, self.height))
         
-        font = pygame.font.SysFont(None, int(72 * (self.height / 600.0)))
-        surf = font.render("PAUSED", True, (255, 255, 255))
-        self.renderer.blit(Texture.from_surface(self.renderer, surf), 
-                           surf.get_rect(center=(self.width // 2, self.height // 2 - 80)))
+        s = self.game_renderer._s
+        tex1 = self.game_renderer._get_text_texture("PAUSED", True, (255, 255, 255), size_override=s(72))
+        self.renderer.blit(tex1, pygame.Rect(self.width // 2 - tex1.width // 2, self.height // 2 - 80 - tex1.height // 2, tex1.width, tex1.height))
         
-        small_font = pygame.font.SysFont(None, int(32 * (self.height / 600.0)))
-        hint1 = small_font.render("Press ESC / TAB to Resume", True, (200, 255, 200))
-        self.renderer.blit(Texture.from_surface(self.renderer, hint1), 
-                           hint1.get_rect(center=(self.width // 2, self.height // 2)))
+        tex2 = self.game_renderer._get_text_texture("Press ESC / TAB to Resume", False, (200, 255, 200), size_override=s(32))
+        self.renderer.blit(tex2, pygame.Rect(self.width // 2 - tex2.width // 2, self.height // 2 - tex2.height // 2, tex2.width, tex2.height))
         
-        hint2 = small_font.render("Press Q or ENTER to Quit", True, (255, 200, 200))
-        self.renderer.blit(Texture.from_surface(self.renderer, hint2), 
-                           hint2.get_rect(center=(self.width // 2, self.height // 2 + 50)))
+        tex3 = self.game_renderer._get_text_texture("Press Q or ENTER to Quit", False, (255, 200, 200), size_override=s(32))
+        self.renderer.blit(tex3, pygame.Rect(self.width // 2 - tex3.width // 2, self.height // 2 + 50 - tex3.height // 2, tex3.width, tex3.height))
 
     def _handle_pause_input(self, event):
         if event.type == pygame.KEYDOWN:
@@ -565,10 +576,8 @@ class RhythmGame:
         
         self._draw((self.paused_at - self.start_time) * 1000.0)
         val = int(math.ceil(rem))
-        font = pygame.font.SysFont(None, int(120 * (self.height / 600.0)))
-        surf = font.render(str(val), True, (255, 255, 0))
-        self.renderer.blit(Texture.from_surface(self.renderer, surf), 
-                           surf.get_rect(center=(self.width // 2, self.height // 2)))
+        tex = self.game_renderer._get_text_texture(str(val), True, (255, 255, 0), size_override=self.game_renderer._s(120))
+        self.renderer.blit(tex, pygame.Rect(self.width // 2 - tex.width // 2, self.height // 2 - tex.height // 2, tex.width, tex.height))
 
     def _draw_result(self, t):
         self.game_renderer.draw_bga(t, self.engine.current_bga_img, self.assets)

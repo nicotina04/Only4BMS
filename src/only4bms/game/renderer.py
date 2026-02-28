@@ -5,7 +5,8 @@ from pygame._sdl2.video import Texture
 from .constants import (
     BASE_W, BASE_H, JUDGMENT_DEFS, HIT_ZONE_VISUAL_H, GREAT_ZONE_VISUAL_H,
     HIT_ZONE_PULSE_PERIOD, HIT_ZONE_ALPHA_MIN, HIT_ZONE_ALPHA_RANGE,
-    LANE_BG_ALPHA, NUM_LANES, HIT_Y, NOTE_H, JUDGMENT_ORDER
+    LANE_BG_ALPHA, NUM_LANES, HIT_Y, NOTE_H, JUDGMENT_ORDER,
+    EFFECT_EXPAND_SPEED, EFFECT_FADE_SPEED
 )
 
 class GameRenderer:
@@ -32,6 +33,8 @@ class GameRenderer:
         self.text_cache = {} # (text, font_id, color, alpha) -> Texture
         self.font_obj_cache = {} # (size, bold) -> Font
         self.ai_vision_texture = None # Pre-rendered scanner static part
+        self.jitter_texture = None # Pre-rendered jitter bar
+        self.jitter_len = 0 # Track jitter history length for cache invalidation
         
         # --- Pre-calculated values ---
         self.note_h = self._s(NOTE_H)
@@ -314,11 +317,12 @@ class GameRenderer:
                         scale = get_bounce(c_timer, 150)
                         tw, th = int(c_tex.width * scale), int(c_tex.height * scale)
                         self.renderer.blit(c_tex, pygame.Rect(lx[0] + ltw // 2 - tw // 2, self.height // 2 + self._s(20) - th // 2, tw, th))
-            # Speed Indicator
-            speed_val = game_state.get('speed', 1.0) / self.h_base_h_ratio
-            spd_tex = self._get_text_texture(f"SPEED x{speed_val:.1f}", False, (200, 200, 200), size_override=self._s(18))
-            spd_tex.alpha = int(200 * fade_mult)
-            self.renderer.blit(spd_tex, pygame.Rect(lx[0], self.height - self._s(25), spd_tex.width, spd_tex.height))
+            # Speed Indicator (Player side only)
+            if not is_ai:
+                speed_val = game_state.get('speed', 1.0) / self.h_base_h_ratio
+                spd_tex = self._get_text_texture(f"SPEED x{speed_val:.1f}", False, (200, 200, 200), size_override=self._s(18))
+                spd_tex.alpha = int(200 * fade_mult)
+                self.renderer.blit(spd_tex, pygame.Rect(lx[0], self.height - self._s(25), spd_tex.width, spd_tex.height))
             
         # ── Note Rendering Optimization ──
         # 1. Render Held Long Notes first (guarantees they are drawn even if behind note_idx)
@@ -380,20 +384,14 @@ class GameRenderer:
                         tex = self._get_ln_body_texture(color, alpha, lane_w)
                         self.renderer.blit(tex, pygame.Rect(nx, int(ey) + note_h // 2, lane_w, body_h))
                 
-                # Handling Hit Connector (Jack)
-                if 'jack_prev_v_time' in note and not is_auto:
+                # Handling Hit Connector (Jack) - Skip for AI side (performance)
+                if not is_ai and 'jack_prev_v_time' in note and not is_auto:
                     prev_td = note['jack_prev_v_time'] - current_visual_time
                     prev_y = int(self.hit_y_minus_note_h - prev_td * spd)
                     connector_h = int(prev_y - y)
                     if connector_h > 0:
                         c_alpha = int(100 * fade_mult)
-                        # Reuse LN Texture logic but with connector alpha
                         c_tex = self._get_ln_body_texture(color, c_alpha, lane_w)
-                        c_margin = int(lane_w * 0.2)
-                        
-                        # Blit specifically centered differently for Jack Connectors
-                        # Actually LN texture already has margins, but we want extra margins. 
-                        # We will simply squeeze the blit rect horizontally to give extra inner margins
                         self.renderer.blit(c_tex, pygame.Rect(nx + int(lane_w * 0.08), int(y) + note_h // 2, lane_w - int(lane_w * 0.16), connector_h))
 
                 # Note Head
@@ -408,48 +406,59 @@ class GameRenderer:
                     self.renderer.blit(tex, pygame.Rect(nx, ny + note_h // 2 - lane_w // 2, lane_w, lane_w))
 
     def _draw_jitter_bar(self, x, y, w, jitter, current_time):
-        # Bar background
-        bar_h = self._s(4)
-        center_x = x + w // 2
-        max_err = 200 # GOOD threshold
+        jitter_len = len(jitter)
+        if jitter_len == 0: return
         
+        bar_h = self._s(4)
+        max_err = 200
+
         # Center line (Perfect)
+        center_x = x + w // 2
         self.renderer.draw_color = (255, 255, 255, 100)
         self.renderer.draw_line((center_x, y - self._s(5)), (center_x, y + self._s(5)))
+
+        # Rebuild jitter texture only when history changes
+        if self.jitter_len != jitter_len:
+            surf_h = bar_h * 2 + 2  # Extra height for latest point
+            surf = pygame.Surface((w, surf_h), pygame.SRCALPHA)
+            half_w = w // 2
+            
+            for i, item in enumerate(jitter):
+                err, hit_t = item if isinstance(item, tuple) else (item, current_time)
+                offset_x = int((err / max_err) * half_w)
+                px = half_w + offset_x
+                
+                idx_alpha = 0.2 + 0.8 * (i / jitter_len)
+                age_ms = current_time - hit_t
+                if age_ms < 0: age_ms = 0
+                time_alpha = max(0, 1.0 - (age_ms / 3000.0))
+                alpha = int(255 * idx_alpha * time_alpha)
+                if alpha <= 0: continue
+                
+                is_latest = (i == jitter_len - 1)
+                point_h = bar_h * 2 if is_latest else bar_h
+                
+                if is_latest:
+                    color = (255, 255, 255, 255)
+                elif abs(err) < 40:
+                    color = (0, 255, 255, alpha)
+                elif err < 0:
+                    color = (100, 200, 255, alpha)
+                else:
+                    color = (255, 150, 50, alpha)
+                
+                py = (surf_h - point_h) // 2
+                pygame.draw.rect(surf, color, (px - 1, py, 2, point_h))
+            
+            if self.jitter_texture:
+                self.jitter_texture.update(surf)
+            else:
+                self.jitter_texture = Texture.from_surface(self.renderer, surf)
+            self.jitter_len = jitter_len
         
-        # Jitter points
-        for i, item in enumerate(jitter):
-            err, hit_t = item if isinstance(item, tuple) else (item, current_time)
-            
-            # Map error to bar position
-            offset_x = (err / max_err) * (w // 2)
-            px = center_x + offset_x
-            
-            # Recency effect (Fade older points)
-            # Duration shows last 2 seconds mostly, but we use the history length too
-            idx_alpha = 0.2 + 0.8 * (i / len(jitter))
-            # Also fade by time (last 3 seconds)
-            age_ms = current_time - hit_t
-            if age_ms < 0: age_ms = 0
-            time_alpha = max(0, 1.0 - (age_ms / 3000.0))
-            alpha = int(255 * idx_alpha * time_alpha)
-            
-            if alpha <= 0: continue
-            
-            # Special highlighting for the very last hit
-            is_latest = (i == len(jitter) - 1)
-            point_h = bar_h * 2 if is_latest else bar_h
-            
-            color = (100, 200, 255, alpha) if err < 0 else (255, 150, 50, alpha)
-            if abs(err) < 40: # PERFECT threshold
-                color = (0, 255, 255, alpha)
-            
-            if is_latest:
-                # Add white flash for latest point
-                color = (255, 255, 255, 255)
-            
-            self.renderer.draw_color = color
-            self.renderer.draw_rect((px - 1, y - point_h // 2, 2, point_h))
+        if self.jitter_texture:
+            surf_h = bar_h * 2 + 2
+            self.renderer.blit(self.jitter_texture, pygame.Rect(x, y - surf_h // 2, w, surf_h))
 
     def draw_bga(self, current_time, bid, assets):
         tex = None
@@ -514,19 +523,18 @@ class GameRenderer:
         self.renderer.draw_rect((x, y, w, h))
 
     def draw_effects(self, effects_list, lanes_x, lane_w):
-        for eff in effects_list[:]:
-            from .constants import EFFECT_EXPAND_SPEED, EFFECT_FADE_SPEED
+        alive = []
+        ty = self._s(500 - 10)  # Pre-calculate once
+        for eff in effects_list:
             eff['radius'] += EFFECT_EXPAND_SPEED
             eff['alpha'] -= EFFECT_FADE_SPEED
             if eff['alpha'] <= 0:
-                effects_list.remove(eff)
                 continue
+            alive.append(eff)
             
             note_type = eff.get('note_type', 0)
             r = self._s(eff['radius'])
             tx = lanes_x[eff['lane']] + lane_w // 2
-            # Shift up by half of NOTE_H (20//2=10) to align with note head center
-            ty = self._s(500 - 10) 
             
             if note_type == 0: # ── Bar Effect ──
                 tex = self._get_bar_effect_texture(eff['color'], lane_w)
@@ -539,6 +547,7 @@ class GameRenderer:
                 tex = self._get_circle_effect_texture(eff['color'])
                 tex.alpha = eff['alpha']
                 self.renderer.blit(tex, pygame.Rect(tx - r, ty - r, r*2, r*2))
+        effects_list[:] = alive
 
     def _get_rank(self, score_ratio):
         if score_ratio >= 1.0: return "P"
