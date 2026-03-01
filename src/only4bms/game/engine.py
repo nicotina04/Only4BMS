@@ -166,23 +166,23 @@ class GameEngine:
                 self.note_idx += 1
                 # Do NOT break; check next note
             elif current_time >= note['time_ms'] and self.held_lns[note['lane']] is not None:
-                # Overlap with held LN: silently close old LN, treat new note as PERFECT
-                old_ln = self.held_lns[note['lane']]
-                # Play old LN end sounds (no judgment — already scored at start)
-                for sid in old_ln.get('end_sample_ids', []):
-                    self.play_sound_cb(sid)
-
+                # Overlap with held LN: Do not close the old LN unless the new one is also an LN
+                # Hit the new note silently (PERFECT)
                 note['hit'] = True
                 for sid in note['sample_ids']:
                     self.play_sound_cb(sid)
                 self.set_judgment_cb("PERFECT", note['lane'], current_time, 0)
                 self.last_note_time_per_lane[note['lane']] = note['time_ms']
-                # If the new note is also a long note, start tracking it
+                
+                # If the incoming overlapping note is ALSO a long note, we must switch to track the new one.
+                # In most BMS charts, this is invalid, but if it happens, we end the current one cleanly.
                 if note.get('is_ln'):
+                    old_ln = self.held_lns[note['lane']]
+                    for sid in old_ln.get('end_sample_ids', []):
+                        self.play_sound_cb(sid)
                     self.held_lns[note['lane']] = note
                     note['start_judgment'] = "PERFECT"
-                else:
-                    self.held_lns[note['lane']] = None
+                
                 self.note_idx += 1
                 # Do NOT break
             elif lane_presses[note['lane']] and abs(current_time - note['time_ms']) <= 40:

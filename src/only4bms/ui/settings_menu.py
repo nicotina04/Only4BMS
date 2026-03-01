@@ -41,6 +41,7 @@ class SettingsMenu:
             {"type": "category", "label_key": "cat_system"},
             {"key": "language",         "label_key": "language",          "type": "choice", "choices_key": "_language_opts"},
             {"key": "fps",             "label_key": "fps_limit",         "step": 10,  "min": 30,    "max": 360},
+            {"key": "vsync",           "label_key": "vsync",             "type": "choice", "choices_key": "_bool_opts"},
             {"key": "input_polling_rate", "label_key": "input_polling",  "step": 100, "min": 125,   "max": 2000},
             {"key": "fullscreen",      "label_key": "fullscreen",        "type": "choice", "choices_key": "_fullscreen_opts"},
             {"key": "audio_device_idx","label_key": "audio_device",      "type": "choice", "choices_key": "audio_devices"},
@@ -78,6 +79,7 @@ class SettingsMenu:
         else:
             self.settings["language"] = 0  # English fallback
         self.settings.setdefault("fullscreen", 0)
+        self.settings.setdefault("vsync", 0) # Default vsync to off for latency
         self.settings.setdefault("note_type", 0)
         self.settings.setdefault("ai_note_type", 0)
         self.selected_index = 1 # Start at first setting, skip SYSTEM header

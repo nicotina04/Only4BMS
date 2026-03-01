@@ -18,6 +18,10 @@ def _early_load_settings():
     return {}
 
 _early_cfg = _early_load_settings()
+
+if sys.platform == "win32":
+    os.environ["SDL_AUDIODRIVER"] = "wasapi"
+
 pygame.mixer.pre_init(
     frequency=int(_early_cfg.get("audio_freq", 44100)),
     size=-16,
@@ -50,7 +54,7 @@ DEFAULT_SETTINGS = {
     "audio_freq": 44100,
     "audio_buffer": 128,
     "audio_channels": 2,
-    "judge_delay": 10.0,
+    "judge_delay": 0.0,
     "note_type": 0,
     "ai_note_type": 0,
     "input_polling_rate": 1000,
@@ -308,7 +312,8 @@ def main():
             os.environ[env_key] = value
     
     window = Window("Only4BMS", size=(800, 600), hidden=True)
-    renderer = Renderer(window, vsync=1)
+    _vsync = settings.get("vsync", 0)
+    renderer = Renderer(window, vsync=_vsync)  # Custom VSync setting (0 or 1)
     renderer.draw_blend_mode = 1
     
     apply_display_mode(settings, window)
