@@ -39,15 +39,16 @@ jobs:
 
       - name: Build .app bundle with PyInstaller
         run: |
-          # Explicitly uninstall opencv if it was pulled as a dependency to prevent libintl conflict
-          pip uninstall -y opencv-python opencv-python-headless
+          # Use headless version of opencv to minimize library conflicts (like libintl)
+          # while still providing VideoCapture functionality needed by the game.
+          pip uninstall -y opencv-python
+          pip install opencv-python-headless
 
           pyinstaller --windowed \
                       --name Only4BMS \
                       --add-data "src/only4bms/ai/*.zip:only4bms/ai" \
                       --collect-all stable_baselines3 \
                       --collect-all torch \
-                      --exclude-module cv2 \
                       --osx-bundle-identifier com.only4bms.app \
                       --clean \
                       src/only4bms/main.py
