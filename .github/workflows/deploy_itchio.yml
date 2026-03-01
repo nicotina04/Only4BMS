@@ -46,13 +46,13 @@ jobs:
 
       - name: Install Butler
         run: |
-          echo "Checking DNS for broth.itch.ovh..."
-          nslookup broth.itch.ovh || echo "DNS lookup failed, but proceeding to try curl..."
+          echo "Checking DNS for broth.itch.zone..."
+          nslookup broth.itch.zone || echo "DNS lookup failed, but proceeding to try curl..."
 
           # Retry loop for download (up to 5 times)
           for i in {1..5}; do
-            echo "Attempt $i: Downloading Butler..."
-            if curl -fL -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default; then
+            echo "Attempt $i: Downloading Butler from broth.itch.zone..."
+            if curl -fL -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default; then
               echo "Download successful!"
               break
             else
