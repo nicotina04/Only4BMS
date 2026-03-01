@@ -54,14 +54,14 @@ jobs:
           OutputBaseFilename=Only4BMS_Setup
           Compression=lzma
           SolidCompression=yes
-          PrivilegesRequired=lowest
+          PrivilegesRequired=admin
 
           [Files]
           Source: "dist\Only4BMS\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
           [Icons]
           Name: "{group}\Only4BMS"; Filename: "{app}\Only4BMS.exe"
-          Name: "{commondesktop}\Only4BMS"; Filename: "{app}\Only4BMS.exe"
+          Name: "{userdesktop}\Only4BMS"; Filename: "{app}\Only4BMS.exe"
 
           [Run]
           Filename: "{app}\Only4BMS.exe"; Description: "{cm:LaunchProgram,Only4BMS}"; Flags: nowait postinstall skipifsilent

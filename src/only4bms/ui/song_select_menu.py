@@ -374,6 +374,22 @@ class SongSelectMenu:
         
         return self.action, self.selected_song_path, self.ai_difficulties[self.ai_diff_idx], self.note_mods[self.note_mod_idx]
 
+    def _open_bms_folder(self):
+        """Open the BMS directory in the system file explorer."""
+        import sys
+        import os
+        import subprocess
+        try:
+            os.makedirs(self.bms_dir, exist_ok=True)
+            if sys.platform == "win32":
+                os.startfile(self.bms_dir)
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", self.bms_dir])
+            else:
+                subprocess.Popen(["xdg-open", self.bms_dir])
+        except Exception as e:
+            print(f"Error opening folder: {e}")
+
     # ── Event handling ───────────────────────────────────────────────────
 
     def _handle_events(self):
@@ -463,6 +479,8 @@ class SongSelectMenu:
             self.note_mod_idx = (self.note_mod_idx + 1) % len(self.note_mods)
             self.settings['note_mod_idx'] = self.note_mod_idx
             self._save()
+        elif key == pygame.K_o: # Open BMS folder
+            self._open_bms_folder()
         elif key == pygame.K_1: # Dec Speed
             self.settings['speed'] = max(0.1, self.settings.get('speed', 1.0) - 0.1)
             self._save()
@@ -519,6 +537,8 @@ class SongSelectMenu:
                 elif btn_action == "RELOAD":
                     self.song_groups = []
                     self._start_scan()
+                elif btn_action == "OPEN_FOLDER":
+                    self._open_bms_folder()
                 elif btn_action == "DIFF":
                     self.ai_diff_idx = (self.ai_diff_idx + 1) % len(self.ai_difficulties)
                 elif btn_action == "MOD":
@@ -603,7 +623,12 @@ class SongSelectMenu:
         # Clickable nav buttons (Right-aligned, matching title height)
         mx, my = pygame.mouse.get_pos()
         self._nav_buttons = []
-        btn_labels = [(_t("reload"), "RELOAD"), (_t("search_bms"), "SEARCH"), (_t("settings_btn"), "SETTINGS")] # Reversed for right-to-left draw
+        btn_labels = [
+            (_t("reload"), "RELOAD"), 
+            (_t("search_bms"), "SEARCH"), 
+            (_t("open_folder"), "OPEN_FOLDER"),
+            (_t("settings_btn"), "SETTINGS")
+        ] # Reversed for right-to-left draw
         if self.mode == 'ai_multi':
             btn_labels.insert(0, (f"{_t('ai_diff_label')}: {self.ai_difficulties[self.ai_diff_idx].upper()} (A)", "DIFF"))
             
