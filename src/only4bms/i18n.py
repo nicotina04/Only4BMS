@@ -247,6 +247,7 @@ STRINGS = {
         "judgment_great": "GREAT!",
         "judgment_good": "GOOD",
         "judgment_miss": "MISS",
+        "open_folder": "Open BMS Folder (O)",
     },
 
     # ╔══════════════════════════════════════════════════════════════════════╗
@@ -298,6 +299,7 @@ STRINGS = {
         "guide_step1": "1. 열린 웹사이트에서 곡을 다운로드합니다.",
         "guide_step2": "2. 다운로드한 ZIP 또는 RAR 파일을 압축 해제합니다.",
         "guide_step3": "3. 압축 해제한 폴더를 'bms' 디렉토리로 이동합니다.",
+        "open_folder": "BMS 폴더 열기 (O)",
         "guide_step4": "4. 이 오버레이를 닫은 후 F5를 눌러 곡을 새로고침합니다.",
         "guide_close": "(ENTER, ESC 또는 클릭으로 닫기)",
 
@@ -394,6 +396,7 @@ STRINGS = {
         "guide_step1": "1. 開いたサイトから曲をダウンロード。",
         "guide_step2": "2. ダウンロードしたZIP/RARを展開。",
         "guide_step3": "3. 展開したフォルダを 'bms' ディレクトリに移動。",
+        "open_folder": "BMSフォルダを開く (O)",
         "guide_step4": "4. F5を押して曲をリロード。",
         "guide_close": "(ENTER / ESC / クリックで閉じる)",
 
@@ -439,6 +442,7 @@ STRINGS = {
         "judgment_great": "GREAT!",
         "judgment_good": "GOOD",
         "judgment_miss": "MISS",
+        "open_folder": "Open BMS Folder (O)",
     },
 
     # ╔══════════════════════════════════════════════════════════════════════╗
@@ -489,7 +493,8 @@ STRINGS = {
         "guide_title": "浏览器已打开！要游玩新歌曲：",
         "guide_step1": "1. 从打开的网站下载歌曲。",
         "guide_step2": "2. 解压下载的ZIP或RAR文件。",
-        "guide_step3": "3. 将解压的文件夹移动到 'bms' 目录。",
+        "guide_step3": "3. 将解压后的文件夹移动到 'bms' 目录。",
+        "open_folder": "打开BMS文件夹 (O)",
         "guide_step4": "4. 按F5重新加载歌曲。",
         "guide_close": "(按ENTER、ESC或点击关闭)",
 
@@ -585,7 +590,8 @@ STRINGS = {
         "guide_title": "เปิดเบราว์เซอร์แล้ว! เล่นเพลงใหม่:",
         "guide_step1": "1. ดาวน์โหลดเพลงจากเว็บที่เปิด",
         "guide_step2": "2. แตกไฟล์ ZIP หรือ RAR ที่ดาวน์โหลด",
-        "guide_step3": "3. ย้ายโฟลเดอร์ไปที่ 'bms/'",
+        "guide_step3": "3. ย้ายโฟลเดอร์ที่แตกไฟล์แล้วไปยังไดเรกทอรี 'bms'",
+        "open_folder": "เปิดโฟลเดอร์ BMS (O)",
         "guide_step4": "4. กด F5 เพื่อโหลดเพลงใหม่",
         "guide_close": "(กด ENTER, ESC หรือคลิกเพื่อปิด)",
 
@@ -681,7 +687,8 @@ STRINGS = {
         "guide_title": "Navegador aberto! Para jogar uma nova música:",
         "guide_step1": "1. Baixe a faixa do site aberto.",
         "guide_step2": "2. Extraia o arquivo ZIP ou RAR.",
-        "guide_step3": "3. Mova a pasta extraída para 'bms/'.",
+        "guide_step3": "3. Mova a pasta extraída para o diretório 'bms'.",
+        "open_folder": "Abrir Pasta BMS (O)",
         "guide_step4": "4. Pressione F5 para recarregar músicas.",
         "guide_close": "(Pressione ENTER, ESC ou clique para fechar)",
 
@@ -777,7 +784,8 @@ STRINGS = {
         "guide_title": "Browser terbuka! Untuk memainkan lagu baru:",
         "guide_step1": "1. Unduh lagu dari situs yang terbuka.",
         "guide_step2": "2. Ekstrak file ZIP atau RAR.",
-        "guide_step3": "3. Pindahkan folder ke 'bms/'.",
+        "guide_step3": "3. Pindahkan folder yang diekstrak ke direktori 'bms'.",
+        "open_folder": "Buka Folder BMS (O)",
         "guide_step4": "4. Tekan F5 untuk memuat ulang lagu.",
         "guide_close": "(Tekan ENTER, ESC atau klik untuk menutup)",
 
@@ -873,7 +881,8 @@ STRINGS = {
         "guide_title": "¡Navegador abierto! Para jugar una nueva canción:",
         "guide_step1": "1. Descarga la pista del sitio abierto.",
         "guide_step2": "2. Extrae el archivo ZIP o RAR descargado.",
-        "guide_step3": "3. Mueve la carpeta extraída a 'bms/'.",
+        "guide_step3": "3. Mueve la carpeta extraída al directorio 'bms'.",
+        "open_folder": "Abrir Carpeta BMS (O)",
         "guide_step4": "4. Presiona F5 para recargar canciones.",
         "guide_close": "(Presiona ENTER, ESC o clic para cerrar)",
 
@@ -969,7 +978,8 @@ STRINGS = {
         "guide_title": "Navigateur ouvert ! Pour jouer un nouveau morceau :",
         "guide_step1": "1. Téléchargez le morceau depuis le site.",
         "guide_step2": "2. Extrayez le fichier ZIP ou RAR.",
-        "guide_step3": "3. Déplacez le dossier dans 'bms/'.",
+        "guide_step3": "3. Déplacez le dossier extrait dans le répertoire 'bms'.",
+        "open_folder": "Ouvrir le dossier BMS (O)",
         "guide_step4": "4. Appuyez sur F5 pour recharger.",
         "guide_close": "(Appuyez sur ENTRÉE, ÉCHAP ou cliquez pour fermer)",
 
@@ -1065,7 +1075,8 @@ STRINGS = {
         "guide_title": "Browser aperto! Per suonare un nuovo brano:",
         "guide_step1": "1. Scarica il brano dal sito aperto.",
         "guide_step2": "2. Estrai il file ZIP o RAR.",
-        "guide_step3": "3. Sposta la cartella in 'bms/'.",
+        "guide_step3": "3. Sposta la cartella estratta nella directory 'bms'.",
+        "open_folder": "Apri cartella BMS (O)",
         "guide_step4": "4. Premi F5 per ricaricare i brani.",
         "guide_close": "(Premi INVIO, ESC o clicca per chiudere)",
 
@@ -1161,7 +1172,8 @@ STRINGS = {
         "guide_title": "Browser geöffnet! Um ein neues Lied zu spielen:",
         "guide_step1": "1. Laden Sie den Track von der Website herunter.",
         "guide_step2": "2. Entpacken Sie die ZIP- oder RAR-Datei.",
-        "guide_step3": "3. Verschieben Sie den Ordner nach 'bms/'.",
+        "guide_step3": "3. Verschieben Sie den entpackten Ordner in das 'bms'-Verzeichnis.",
+        "open_folder": "BMS-Ordner öffnen (O)",
         "guide_step4": "4. Drücken Sie F5 zum Neuladen.",
         "guide_close": "(ENTER, ESC oder Klick zum Schließen)",
 
