@@ -26,7 +26,7 @@ LANGUAGE_CODES = list(LANGUAGES.keys())
 _current_lang = "en"
 
 # ── CJK-aware Font List ─────────────────────────────────────────────────
-FONT_NAME = "Outfit, Malgun Gothic, Yu Gothic, Microsoft YaHei, Leelawadee UI, Roboto, sans-serif"
+FONT_NAME = "Outfit, Apple SD Gothic Neo, Hiragino Sans, PingFang SC, Malgun Gothic, Yu Gothic, Microsoft YaHei, Leelawadee UI, Roboto, sans-serif"
 
 # ── Centralized Font Sizes (base 800x600) ───────────────────────────────
 # All sizes are for BASE resolution and will be scaled by each component.
