@@ -128,7 +128,9 @@ class AssetLoader:
                 try:
                     self.videos[bmp_id] = VideoPlayer(filepath, target_size=(self.width, self.height))
                     loaded = True
-                except: pass
+                except Exception as e:
+                    print(f"WARNING [Assets]: VideoPlayer failed for {filepath}: {e}")
+                    pass
             elif os.path.exists(filepath):
                 loaded = self._try_load_image(bmp_id, filepath)
 

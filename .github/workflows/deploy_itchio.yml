@@ -8,30 +8,39 @@ jobs:
     name: Fetch Latest Release and Deploy
     runs-on: ubuntu-latest
     steps:
-      - name: Get Latest Release info
-        id: get_release
-        uses: pozetroninc/github-action-get-latest-release@master
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository }}
+          fetch-depth: 0
+
+      - name: Get Latest Tag
+        id: get_release
+        run: |
+          latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
+          echo "release=$latest_tag" >> $GITHUB_OUTPUT
+          echo "Found latest tag: $latest_tag"
 
       - name: Download Windows Installer
         uses: dsaltares/fetch-gh-release-asset@master
         with:
-          version: ${{ steps.get_release.outputs.release }}
+          repo: ${{ github.repository }}
+          version: tags/${{ steps.get_release.outputs.release }}
           file: Only4BMS_Setup.exe
           target: dist/Only4BMS_Setup.exe
 
       - name: Download Mac Intel Zip
         uses: dsaltares/fetch-gh-release-asset@master
         with:
-          version: ${{ steps.get_release.outputs.release }}
+          repo: ${{ github.repository }}
+          version: tags/${{ steps.get_release.outputs.release }}
           file: Only4BMS-Mac-Intel.zip
           target: dist/Only4BMS-Mac-Intel.zip
 
       - name: Download Mac ARM Zip
         uses: dsaltares/fetch-gh-release-asset@master
         with:
-          version: ${{ steps.get_release.outputs.release }}
+          repo: ${{ github.repository }}
+          version: tags/${{ steps.get_release.outputs.release }}
           file: Only4BMS-Mac-ARM.zip
           target: dist/Only4BMS-Mac-ARM.zip
 

@@ -311,6 +311,7 @@ class RhythmGame:
     def _resume(self):
         self.countdown_start = time.perf_counter()
         self.state = "COUNTDOWN"
+        pygame.mouse.set_visible(False)
         
     def _get_rank(self, score_ratio):
         if score_ratio >= 1.0: return "P"
@@ -325,6 +326,7 @@ class RhythmGame:
     def run(self):
         self.start_time = time.perf_counter()
         self.is_running = True
+        pygame.mouse.set_visible(False)
         
         # High Polling Rate & Logic Sub-stepping Initialization
         polling_rate = self.settings.get('input_polling_rate', 1000)
@@ -340,6 +342,7 @@ class RhythmGame:
 
         while self.is_running:
             if self.needs_restart:
+                pygame.mouse.set_visible(True)
                 pygame.mixer.stop()
                 return "RESTART"
             
@@ -377,6 +380,7 @@ class RhythmGame:
                     
                     if self.engine.update(sim_time_ms, self.lane_pressed):
                         self.state = "RESULT"
+                        pygame.mouse.set_visible(True)
                 simulated_real_time += dt_logic
                 accumulator -= dt_logic
                 # Safety break to prevent "Spiral of Death"
@@ -426,6 +430,8 @@ class RhythmGame:
 
                 self.renderer.present()
                 last_render_time = time.perf_counter()
+        
+        pygame.mouse.set_visible(True)
 
     def _update_ai(self, current_time):
         miss_window = JUDGMENT_DEFS["MISS"]["threshold_ms"] * self.hw_mult

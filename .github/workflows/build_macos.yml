@@ -39,16 +39,18 @@ jobs:
           echo "numpy<2.0" > constraints.txt
           export PIP_CONSTRAINT=$(pwd)/constraints.txt
 
-          # Install everything in one pass where possible
-          pip install torch stable-baselines3 shimmy gymnasium pyinstaller opencv-python-headless
+          # Install everything in one pass
+          # Use full opencv-python for better video codec support on macOS
+          pip install torch stable-baselines3 shimmy gymnasium pyinstaller opencv-python
           pip install -e .
 
-          # Mixer Conflict Fix: Find and remove the conflicting libintl from opencv-python-headless
-          # explicitly before PyInstaller scans the environment. This forces PyInstaller to
-          # find and bundle the version from pygame/fluidsynth instead.
-          CV2_DIR=$(python -c "import cv2, os; print(os.path.dirname(cv2.__file__))")
-          echo "Searching for libintl in $CV2_DIR"
-          find "$CV2_DIR" -name "libintl*.dylib" -delete || true
+          # Fix NumPy version (sometimes upgraded by -e .)
+          pip install "numpy<2.0"
+
+          # Mixer Stability Fix: Instead of deleting, we ensure cv2 doesn't override 
+          # global symbols. On modern PyInstaller, --collect-all often handles this,
+          # but we keep the pre-purge only for absolute safety if needed.
+          # For now, let's try WITHOUT purging and see if Video works.
 
       - name: Verify Environment
         run: |
@@ -68,6 +70,7 @@ jobs:
                       --collect-all stable_baselines3 \
                       --collect-all torch \
                       --collect-all numpy \
+                      --collect-all cv2 \
                       --osx-bundle-identifier com.only4bms.app \
                       --clean \
                       src/only4bms/main.py

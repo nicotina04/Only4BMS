@@ -25,8 +25,17 @@ class VideoPlayer:
     def __init__(self, filepath, target_size=(800, 600)):
         cv2 = get_cv2()
         self.cap = cv2.VideoCapture(filepath)
+        if not self.cap.isOpened():
+            print(f"ERROR [Video]: Could not open video file: {filepath}")
+            raise IOError(f"Could not open video file: {filepath}")
+            
         self.fps = self.cap.get(cv2.CAP_PROP_FPS)
         self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if self.fps <= 0:
+            print(f"ERROR [Video]: Invalid FPS ({self.fps}) for video: {filepath}")
+            raise IOError(f"Invalid FPS for video: {filepath}")
+        
+        print(f"DEBUG [Video]: Loaded {filepath} ({self.fps} FPS, {self.total_frames} frames)")
         
         # Target display size
         self.target_w, self.target_h = target_size
