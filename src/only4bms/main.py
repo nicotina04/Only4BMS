@@ -3,21 +3,30 @@ import json
 import os
 import sys
 import time
+from only4bms import paths
 
-# Path resolution for PyInstaller
-def get_base_path():
-    if getattr(sys, 'frozen', False):
-        # On macOS, sys.executable points into the bundle: Only4BMS.app/Contents/MacOS/Only4BMS
-        # We want the folder containing Only4BMS.app if we want it to be portable
-        exe_path = os.path.dirname(os.path.abspath(sys.executable))
-        if sys.platform == "darwin" and ".app/Contents/MacOS" in exe_path:
-            return os.path.abspath(os.path.join(exe_path, "../../../"))
-        return exe_path
-    return os.path.abspath(".")
+# ── Early Initialization ──────────────────────────────────────────────────
+# On macOS, complex libraries like OpenCV (cv2) or Torch can shadow DLLs 
+# needed by pygame-ce (like libintl). We load settings and init the mixer 
+# FIRST, before any other project-level imports.
+def _early_load_settings():
+    try:
+        if os.path.exists(paths.SETTINGS_FILE):
+            with open(paths.SETTINGS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except: pass
+    return {}
 
-BASE_PATH = get_base_path()
-SETTINGS_FILE = os.path.join(BASE_PATH, "settings.json")
+_early_cfg = _early_load_settings()
+pygame.mixer.pre_init(
+    frequency=int(_early_cfg.get("audio_freq", 44100)),
+    size=-16,
+    channels=int(_early_cfg.get("audio_channels", 2)),
+    buffer=int(_early_cfg.get("audio_buffer", 128)),
+)
+pygame.init() # Initialize core modules early
 
+# Now safe to import project modules
 from only4bms.core.bms_parser import BMSParser
 from only4bms.game.rhythm_game import RhythmGame
 from only4bms.ui.main_menu import MainMenu
@@ -191,9 +200,9 @@ def _create_mock_bms(song_dir):
 def load_settings():
     """Load settings from JSON, merging with defaults."""
     settings = dict(DEFAULT_SETTINGS)
-    if os.path.exists(SETTINGS_FILE):
+    if os.path.exists(paths.SETTINGS_FILE):
         try:
-            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+            with open(paths.SETTINGS_FILE, "r", encoding="utf-8") as f:
                 saved = json.load(f)
                 
                 # Migration: if joystick_keys contains integers, reset to new string-based defaults
@@ -211,8 +220,31 @@ def load_settings():
         except Exception as e:
             print(f"Warning: Failed to load settings ({e})")
     
+    print(f"Scanning song directory: {os.path.abspath(paths.SONG_DIR)}")
+    return settings
+
+
+def save_settings(settings):
+    """Save current settings to JSON."""
+    try:
+        # Final safety: confirm directory exists before writing SETTINGS_FILE
+        target_dir = os.path.dirname(paths.SETTINGS_FILE)
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir)
+
+        with open(paths.SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(settings, f, indent=4)
+    except Exception as e:
+        print(f"Error saving settings: {e}")
+
+
+# ── Entry point ──────────────────────────────────────────────────────────
+
+def main():
+    settings = load_settings()
+    
     # Create bms directory if not exists
-    song_dir = os.path.join(BASE_PATH, "bms")
+    song_dir = paths.SONG_DIR
     if not os.path.exists(song_dir):
         try:
             os.makedirs(song_dir)
@@ -220,9 +252,12 @@ def load_settings():
             _create_mock_bms(song_dir)
         except Exception as e:
             print(f"Error creating bms directory at {song_dir}: {e}")
-            # Fallback to current dir if absolute path fails for some reason
-            song_dir = "bms"
-            if not os.path.exists(song_dir): os.makedirs(song_dir)
+            # Final fallback to a guaranteed writable local path if even DATA_PATH fails
+            # This shouldn't really happen but prevents hard crash
+            song_dir = "bms" 
+            try:
+                if not os.path.exists(song_dir): os.makedirs(song_dir)
+            except: pass
 
     print(f"Scanning song directory: {os.path.abspath(song_dir)}")
     return settings
@@ -251,15 +286,6 @@ def main():
 
     # Initialize i18n from settings
     i18n.set_language(settings.get("language", "auto"))
-
-    # Pre-init audio and pygame
-    pygame.mixer.pre_init(
-        frequency=int(settings["audio_freq"]),
-        size=-16,
-        channels=int(settings["audio_channels"]),
-        buffer=int(settings["audio_buffer"]),
-    )
-    pygame.init()
 
     # Detect audio devices
     settings["audio_devices"] = _detect_audio_devices()

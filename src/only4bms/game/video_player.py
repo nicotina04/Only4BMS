@@ -1,8 +1,17 @@
 import pygame
-import cv2
 import numpy as np
 import threading
 import time
+
+# Lazy load cv2 to prevent macOS library conflicts at startup
+_cv2 = None
+def get_cv2():
+    global _cv2
+    if _cv2 is None:
+        import cv2
+        _cv2 = cv2
+    return _cv2
+
 
 # ── Performance Constants ────────────────────────────────────────────────
 MAX_VID_W = 1024  # Cap decoding resolution (720p-ish) for balance
@@ -14,6 +23,7 @@ class VideoPlayer:
     """Optimized video decoder using a background thread and resolution capping."""
 
     def __init__(self, filepath, target_size=(800, 600)):
+        cv2 = get_cv2()
         self.cap = cv2.VideoCapture(filepath)
         self.fps = self.cap.get(cv2.CAP_PROP_FPS)
         self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -75,6 +85,7 @@ class VideoPlayer:
                 
             # If target is far ahead or behind, seek
             if target < last or target > last + _SEEK_TOLERANCE:
+                cv2 = get_cv2()
                 self.cap.set(cv2.CAP_PROP_POS_FRAMES, target)
                 self.last_decoded_idx = target - 1
                 last = target - 1
@@ -88,12 +99,14 @@ class VideoPlayer:
                     self.last_decoded_idx += 1
             else:
                 # Loop or stop
+                cv2 = get_cv2()
                 self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                 self.last_decoded_idx = -1
                 time.sleep(0.1)
 
     def _convert(self, frame):
         """BGR -> RGB, Resize to final target size, -> Pygame Surface."""
+        cv2 = get_cv2()
         # Scale to final display size in background thread (OpenCV is very fast at this)
         resized = cv2.resize(frame, (self.final_w, self.final_h), interpolation=cv2.INTER_LINEAR)
         rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)

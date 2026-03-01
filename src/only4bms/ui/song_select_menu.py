@@ -3,10 +3,11 @@ import os
 import sys
 import webbrowser
 import math
-
+import subprocess
 import pygame
 from only4bms.i18n import get as _t, FONT_NAME
 from only4bms import i18n as _i18n
+from only4bms import paths
 
 from ..core.bms_parser import BMSParser
 
@@ -56,11 +57,7 @@ class SongSelectMenu:
         self.settings = settings
 
         # BMS directory
-        if getattr(sys, 'frozen', False):
-            base = os.path.dirname(sys.executable)
-        else:
-            base = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-        self.bms_dir = os.path.join(base, 'bms')
+        self.bms_dir = paths.SONG_DIR
 
         # State
         self.song_groups = [] # List of {title, artist, folder, charts: [metadata]}
@@ -375,20 +372,22 @@ class SongSelectMenu:
         return self.action, self.selected_song_path, self.ai_difficulties[self.ai_diff_idx], self.note_mods[self.note_mod_idx]
 
     def _open_bms_folder(self):
-        """Open the BMS directory in the system file explorer."""
-        import sys
-        import os
-        import subprocess
-        try:
-            os.makedirs(self.bms_dir, exist_ok=True)
-            if sys.platform == "win32":
-                os.startfile(self.bms_dir)
-            elif sys.platform == "darwin":
-                subprocess.Popen(["open", self.bms_dir])
-            else:
-                subprocess.Popen(["xdg-open", self.bms_dir])
-        except Exception as e:
-            print(f"Error opening folder: {e}")
+        """Open the system file explorer to the BMS song directory."""
+        path = os.path.abspath(self.bms_dir)
+        
+        if not os.path.exists(path):
+            try:
+                os.makedirs(path)
+            except Exception as e:
+                print(f"Error creating BMS folder: {e}")
+                return
+        
+        if sys.platform == "win32":
+            os.startfile(path)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", path])
+        else:
+            subprocess.Popen(["xdg-open", path])
 
     # ── Event handling ───────────────────────────────────────────────────
 
