@@ -45,6 +45,7 @@ def run(settings, renderer, window, **ctx):
           - challenge_manager : ChallengeManager instance
     """
     from .multiplayer_menu import MultiplayerMenu
+    from .extension import OnlineGameExtension
     from only4bms.core.network_manager import NetworkManager
     from only4bms.core.bms_parser import BMSParser
     from only4bms.game.rhythm_game import RhythmGame
@@ -90,8 +91,6 @@ def run(settings, renderer, window, **ctx):
                 match_settings_obj["speed"] = float(match_settings["speed"])
 
             p1_modifiers = set(match_settings.get("modifiers", []))
-            p1_buffs = set(match_settings.get("buffs", []))
-            p1_debuffs = set(match_settings.get("debuffs", []))
 
             game = RhythmGame(
                 notes, bgms, bgas, parser.wav_map, bmp_map,
@@ -106,8 +105,7 @@ def run(settings, renderer, window, **ctx):
                 note_mod="None",
                 challenge_manager=challenge_manager,
                 p1_modifiers=p1_modifiers,
-                p1_buffs=p1_buffs,
-                p1_debuffs=p1_debuffs,
+                extension=OnlineGameExtension(),
             )
             game.run()
             # Loop back to multiplayer menu (lobby re-entry)

@@ -21,6 +21,8 @@ from pygame._sdl2.video import Texture  # type: ignore
 import only4bms.i18n as i18n
 from only4bms.core.bms_parser import BMSParser
 from only4bms.game.rhythm_game import RhythmGame
+from .i18n import t as _ct
+from .extension import CourseGameExtension
 
 
 # ── Rank thresholds (EX-accuracy based) ─────────────────────────────────────
@@ -240,11 +242,11 @@ class CourseSession:
         self._wave_last_t = time.perf_counter()
 
         self._mot_pool = [
-            i18n.get("course_mot_1"),
-            i18n.get("course_mot_2"),
-            i18n.get("course_mot_3"),
-            i18n.get("course_mot_4"),
-            i18n.get("course_mot_5"),
+            _ct("course_mot_1"),
+            _ct("course_mot_2"),
+            _ct("course_mot_3"),
+            _ct("course_mot_4"),
+            _ct("course_mot_5"),
         ]
 
     # ── Public entry ─────────────────────────────────────────────────────────
@@ -316,14 +318,14 @@ class CourseSession:
                             s["hit_window_mult"] = s.get("hit_window_mult", 1.0) * w_mult
 
                 self._init_mixer(s)
+                ext = CourseGameExtension(self.hp, self.hp_max, self.current_modifier)
                 game = RhythmGame(
                     notes, bgms, bgas, parser.wav_map, bmp_map,
                     parser.title, s,
                     visual_timing_map=visual_map, measures=measures, mode="single",
                     metadata=metadata,
                     renderer=self.renderer, window=self.window,
-                    course_hp=self.hp, course_hp_max=self.hp_max,
-                    course_modifier=self.current_modifier,
+                    extension=ext,
                 )
                 res = game.run()
                 if isinstance(res, dict):
@@ -341,7 +343,7 @@ class CourseSession:
             stage_score, stage_rank, acc, j_ex, j_max = _calc_score_and_rank(game.judgments)
 
             hp_before = self.hp
-            self.hp   = game.course_hp
+            self.hp   = ext.hp
             hp_delta  = self.hp - hp_before
 
             newly_done_stage = []
@@ -402,7 +404,7 @@ class CourseSession:
 
     def _modifier_labels(self, modifiers: list) -> list[tuple[str, bool]]:
         if not modifiers:
-            return [(i18n.get("course_no_modifier"), False)]
+            return [(_ct("course_no_modifier"), False)]
         results = []
         for mod in modifiers:
             key, is_buff, *_rest, desc_key = mod
@@ -440,13 +442,13 @@ class CourseSession:
             for txt, is_buff in labels:
                 col = (100, 255, 120) if is_buff else (255, 100, 100)
                 if not self.current_modifier: col = (140, 140, 140)
-                m_surf = f_sm.render(i18n.get("course_modifier_prefix") + txt, True, col)
+                m_surf = f_sm.render(_ct("course_modifier_prefix") + txt, True, col)
                 surf.blit(m_surf, ((W - m_surf.get_width()) // 2, y_mb))
                 y_mb += sy * 24
 
         if self.stage_num > 0:
             col = (180, 100, 255) if self.current_note_mod != "None" else (100, 120, 100)
-            nm_text = i18n.get("course_note_mod_none") if self.current_note_mod == "None" else i18n.get("course_note_mod").format(mod=self.current_note_mod)
+            nm_text = _ct("course_note_mod_none") if self.current_note_mod == "None" else _ct("course_note_mod").format(mod=self.current_note_mod)
             tm  = f_sm.render(nm_text, True, col)
             surf.blit(tm, (20, 20))
 
@@ -485,15 +487,15 @@ class CourseSession:
                 surf.blit(surf_s, ((W - surf_s.get_width()) // 2, int(y)))
 
             blit_cx(f_title.render(
-                i18n.get("course_stage_clear").format(n=stage_num, rank=stage_rank),
+                _ct("course_stage_clear").format(n=stage_num, rank=stage_rank),
                 True, (0, 255, 200)), H * 0.09)
 
             blit_cx(f_body.render(
-                i18n.get("course_stat_row").format(score=stage_score, total=self.total_score, best=self.best_score),
+                _ct("course_stat_row").format(score=stage_score, total=self.total_score, best=self.best_score),
                 True, (255, 230, 100)), H * 0.22)
 
             blit_cx(f_sm.render(
-                i18n.get("course_acc_row").format(
+                _ct("course_acc_row").format(
                     acc=acc, p=judgments.get('PERFECT',0), g=judgments.get('GREAT',0), m=judgments.get('MISS',0)),
                 True, (180, 220, 180)), H * 0.32)
 
@@ -513,7 +515,7 @@ class CourseSession:
 
             blit_cx(f_body.render(mot, True, (255, 180, 80)), H * 0.50)
 
-            blit_cx(f_sm.render(i18n.get("course_next_stage_label"), True, (150, 150, 200)), H * 0.575)
+            blit_cx(f_sm.render(_ct("course_next_stage_label"), True, (150, 150, 200)), H * 0.575)
 
             desc = next_desc
             max_w = int(W * 0.88)
@@ -526,7 +528,7 @@ class CourseSession:
             next_labels = self._modifier_labels(next_modifier)
             y_nb = H * 0.70
             for label_txt, is_buff in next_labels:
-                prefix = i18n.get("course_buff_prefix") if is_buff else i18n.get("course_debuff_prefix")
+                prefix = _ct("course_buff_prefix") if is_buff else _ct("course_debuff_prefix")
                 if not next_modifier: prefix = ""
                 banner_text = f"{prefix}  {label_txt}" if prefix else label_txt
                 col = (100, 255, 150) if is_buff else (255, 130, 130)
@@ -536,10 +538,10 @@ class CourseSession:
 
             note_mod_col   = (200, 80, 255) if next_note_mod != "None" else (100, 140, 100)
             nm_label_val = next_note_mod.upper() if next_note_mod != "None" else i18n.get("none").upper()
-            note_mod_label = i18n.get("course_note_mod").format(mod=nm_label_val)
+            note_mod_label = _ct("course_note_mod").format(mod=nm_label_val)
             blit_cx(f_xs.render(note_mod_label, True, note_mod_col), H * 0.78)
 
-            blit_cx(f_sm.render(i18n.get("course_continue_hint"), True, (120, 120, 130)), H * 0.90)
+            blit_cx(f_sm.render(_ct("course_continue_hint"), True, (120, 120, 130)), H * 0.90)
 
             if newly_completed and _toast_start_t:
                 elapsed = time.perf_counter() - _toast_start_t
@@ -614,14 +616,14 @@ class CourseSession:
             def blit_cx(s, y):
                 surf.blit(s, ((W - s.get_width()) // 2, int(y)))
 
-            blit_cx(f_title.render(i18n.get("course_fail"), True, (255, 50, 50)), H * 0.20)
+            blit_cx(f_title.render(_ct("course_fail"), True, (255, 50, 50)), H * 0.20)
             blit_cx(f_body.render(
-                i18n.get("course_fail_stats").format(n=stage_num, total=self.total_score),
+                _ct("course_fail_stats").format(n=stage_num, total=self.total_score),
                 True, (255, 200, 80)), H * 0.40)
             blit_cx(f_body.render(
-                i18n.get("course_last_stage_info").format(score=last_score, rank=last_rank),
+                _ct("course_last_stage_info").format(score=last_score, rank=last_rank),
                 True, (200, 180, 255)), H * 0.52)
-            blit_cx(f_sm.render(i18n.get("course_fail_hint"), True, (120, 120, 130)), H * 0.80)
+            blit_cx(f_sm.render(_ct("course_fail_hint"), True, (120, 120, 130)), H * 0.80)
 
             self.renderer.clear()
             tex = Texture.from_surface(self.renderer, surf)
@@ -659,11 +661,11 @@ class CourseSession:
             def blit_cx(s, y):
                 surf.blit(s, ((W - s.get_width()) // 2, int(y)))
 
-            blit_cx(f_title.render(i18n.get("course_clear"), True, (50, 255, 100)), H * 0.20)
+            blit_cx(f_title.render(_ct("course_clear"), True, (50, 255, 100)), H * 0.20)
             blit_cx(f_body.render(
-                i18n.get("course_clear_stats").format(total=self.total_score),
+                _ct("course_clear_stats").format(total=self.total_score),
                 True, (255, 230, 100)), H * 0.45)
-            blit_cx(f_sm.render(i18n.get("course_fail_hint"), True, (150, 150, 160)), H * 0.85)
+            blit_cx(f_sm.render(_ct("course_fail_hint"), True, (150, 150, 160)), H * 0.85)
 
             if newly_completed and _toast_start_t:
                 elapsed = time.perf_counter() - _toast_start_t

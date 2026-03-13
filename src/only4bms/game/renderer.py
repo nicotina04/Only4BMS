@@ -723,53 +723,6 @@ class GameRenderer:
                 spd_tex.alpha = int(200 * fade_mult)
                 self.renderer.blit(spd_tex, pygame.Rect(lx[0], self.height - self._s(25), spd_tex.width, spd_tex.height))
 
-            # ── Course Mode HP Bar & Modifier badge (Player 1 only) ─────────
-            if not is_ai:
-                course_hp     = game_state.get('course_hp')
-                course_hp_max = game_state.get('course_hp_max', 100.0)
-                if course_hp is not None:
-                    # HP bar on the right side of the lane area
-                    hp_ratio = max(0.0, min(1.0, course_hp / (course_hp_max or 1)))
-                    bar_w = ltw
-                    bar_h = self._s(8)
-                    bar_x = lx[0]
-                    bar_y = self.height - self._s(46)
-                    # BG
-                    self.renderer.draw_color = (40, 10, 10, int(200 * fade_mult))
-                    self.renderer.fill_rect((bar_x, bar_y, bar_w, bar_h))
-                    # Fill
-                    fill_w = max(0, int(bar_w * hp_ratio))
-                    if fill_w:
-                        r_c = int(255 * (1.0 - hp_ratio))
-                        g_c = int(200 * hp_ratio)
-                        self.renderer.draw_color = (r_c, g_c, 40, int(220 * fade_mult))
-                        self.renderer.fill_rect((bar_x, bar_y, fill_w, bar_h))
-                    # Border
-                    border_col = (200, 80, 80, int(180 * fade_mult)) if hp_ratio < 0.25 else (80, 200, 120, int(160 * fade_mult))
-                    self.renderer.draw_color = border_col
-                    self.renderer.draw_rect((bar_x, bar_y, bar_w, bar_h))
-                    # HP text label  (e.g., "HP 65/100")
-                    hp_str = f"HP  {int(course_hp)}/{int(course_hp_max)}"
-                    hp_color = (255, 100, 100) if hp_ratio < 0.25 else (180, 230, 180)
-                    hp_label = self._get_text_texture(hp_str, False, hp_color, size_override=self._s(14))
-                    hp_label.alpha = int(220 * fade_mult)
-                    self.renderer.blit(hp_label, pygame.Rect(lx[0], bar_y - self._s(18), hp_label.width, hp_label.height))
-
-                    # Modifier badges (plural)
-                    course_mods = game_state.get('course_modifier')
-                    if course_mods:
-                        y_m = self._s(6)
-                        for mod in course_mods:
-                            key, is_buff, *_, desc_key = mod
-                            mod_text = _i18n.get(desc_key)
-                            # Using safe symbols instead of complex icons
-                            prefix = ">> " if is_buff else "<< "
-                            mod_color = (130, 255, 180) if is_buff else (255, 120, 100)
-                            mod_badge = self._get_text_texture(prefix + mod_text, True, mod_color, size_override=self._s(14))
-                            mod_badge.alpha = int(220 * fade_mult)
-                            self.renderer.blit(mod_badge, pygame.Rect(lx[0], y_m, mod_badge.width, mod_badge.height))
-                            y_m += self._s(18)
-            
         # ── Note Rendering Optimization ──
         # 1. Render Held Long Notes first (guarantees they are drawn even if behind note_idx)
         held_lns = game_state.get('held_lns', [])
@@ -964,7 +917,7 @@ class GameRenderer:
             surf_h = bar_h * 2 + 2
             self.renderer.blit(self.jitter_texture, pygame.Rect(x, y - surf_h // 2, w, surf_h))
 
-    def draw_bga(self, current_time, bid, assets, is_course=False):
+    def draw_bga(self, current_time, bid, assets):
         tex = None
         if bid is not None:
             if bid in assets.videos:
@@ -994,13 +947,6 @@ class GameRenderer:
             dy = (self.height - dh) // 2
             
             self.renderer.blit(tex, pygame.Rect(dx, dy, dw, dh))
-        elif is_course:
-            # Draw wave visualization if it's course mode and no other BGA
-            now = time.perf_counter()
-            dt = now - self.last_wave_time
-            self.last_wave_time = now
-            self.wave_viz.update(dt)
-            self.wave_viz.draw_to_renderer(self.renderer, self.width // 2, self.height // 2 + int(self.height * 0.1), self.width // 2 - 40)
 
 
     def draw_score_bar(self, p1_judgs, ai_judgs):
@@ -1108,8 +1054,8 @@ class GameRenderer:
         max_ex = stats.get('total_notes', 1) * 2
         ratio_h = min(1.0, ex_h / max_ex)
         
-        score_ai = calc_score(stats['ai_judgments']) if stats['mode'] in ('ai_multi', 'online_multi') else 0
-        ex_ai = calc_ex_score(stats['ai_judgments'])
+        score_ai = calc_score(stats['ai_judgments']) if stats['mode'] == 'ai_multi' else 0
+        ex_ai = calc_ex_score(stats.get('ai_judgments', {}))
         ratio_ai = min(1.0, ex_ai / max_ex)
 
         # Background tint
@@ -1117,17 +1063,17 @@ class GameRenderer:
         self.renderer.fill_rect((0, 0, self.width, self.height))
 
         # Title/Banner
-        if stats['mode'] in ('ai_multi', 'online_multi'):
+        if stats['mode'] == 'ai_multi':
             if score_h > score_ai:
                 win_txt = _t("you_win")
                 win_color = (0, 255, 255)
             elif score_h < score_ai:
-                win_txt = _t("ai_wins") if stats['mode'] == 'ai_multi' else _t("opponent_wins")
+                win_txt = _t("ai_wins")
                 win_color = (255, 50, 50)
             else:
                 win_txt = _t("draw")
                 win_color = (255, 255, 0)
-                
+
             bs_tex = self._get_text_texture(win_txt, True, win_color, size_override=self._s(60))
             bs_tex.alpha = 255
             self.renderer.blit(bs_tex, pygame.Rect(self.width // 2 - bs_tex.width // 2, self._s(20), bs_tex.width, bs_tex.height))
@@ -1180,33 +1126,9 @@ class GameRenderer:
             ai_score_txt = self._get_text_texture(_t("score_label").format(val=f"{score_ai:,}"), False, (255, 150, 150), size_override=self._s(22))
             ai_score_txt.alpha = 255
             self.renderer.blit(ai_score_txt, pygame.Rect(p1_x, y, ai_score_txt.width, ai_score_txt.height))
-            
-        elif stats['mode'] == 'online_multi':
-            p2_x = self._sx(450)
-            y_p2 = y_save
-            ai_title = self._get_text_texture(_t("opponent_performance"), True, (255, 100, 100), size_override=self._s(24))
-            ai_title.alpha = 255
-            self.renderer.blit(ai_title, pygame.Rect(p2_x, y_p2 - self._s(40), ai_title.width, ai_title.height))
-            
-            opp_judgments = stats.get('ai_judgments', {k: 0 for k in JUDGMENT_ORDER})
-            for key in JUDGMENT_ORDER:
-                color = JUDGMENT_DEFS[key]["color"]
-                text = self._get_text_texture(f"{key:<10} {opp_judgments.get(key, 0):>4}", False, color, size_override=self._s(22))
-                text.alpha = 255
-                self.renderer.blit(text, pygame.Rect(p2_x, y_p2, text.width, text.height))
-                y_p2 += self._s(32)
-            
-            y_p2 += self._s(20)
-            ai_score_txt = self._get_text_texture(_t("score_label").format(val=f"{score_ai:,}"), True, (255, 100, 100), size_override=self._s(32))
-            ai_score_txt.alpha = 255
-            self.renderer.blit(ai_score_txt, pygame.Rect(p2_x, y_p2, ai_score_txt.width, ai_score_txt.height))
-            y_p2 += self._s(40)
-            ai_ex_text = self._get_text_texture(_t("ex_label").format(ex=ex_ai, max=max_ex, pct=f"{ratio_ai*100:.1f}"), False, (255, 200, 200), size_override=self._s(20))
-            ai_ex_text.alpha = 255
-            self.renderer.blit(ai_ex_text, pygame.Rect(p2_x, y_p2, ai_ex_text.width, ai_ex_text.height))
 
         # ── Analytics Graphs (Timing Scatter Plot) ──
-        if stats['mode'] != 'online_multi':
+        if True:
             graph_x = self._sx(400)
             graph_y = self._s(100)
             graph_w = self.width - graph_x - self._sx(50)

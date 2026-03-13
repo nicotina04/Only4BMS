@@ -2,8 +2,9 @@ import pygame
 import threading
 import os
 import time
-from only4bms.i18n import get as _t
+from only4bms.i18n import get as _host_t
 from only4bms import i18n as _i18n
+from .i18n import t as _t
 from only4bms import paths
 from only4bms.core.network_manager import NetworkManager
 
@@ -289,7 +290,7 @@ class MultiplayerMenu:
     def _draw(self):
         self.screen.fill((20, 20, 30, 255))
 
-        title_surf = self.title_font.render(_t("menu_online_multi"), True, COLOR_ACCENT)
+        title_surf = self.title_font.render(_host_t("menu_online_multi"), True, COLOR_ACCENT)
         self.screen.blit(title_surf, ((self.w - title_surf.get_width()) // 2, self._s(40)))
 
         if self.state == "INPUT_ADDRESS":

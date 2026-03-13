@@ -11,10 +11,11 @@ from .constants import *
 from .assets import AssetLoader
 from .engine import GameEngine
 from .renderer import GameRenderer
+from .game_extension import GameExtension
 
 class RhythmGame:
     def __init__(self, notes_orig, bgms, bgas, wav_map, bmp_map, title, settings, visual_timing_map=None, measures=None, mode='single', metadata=None, renderer=None, window=None, ai_difficulty='normal', note_mod='None',
-                 course_hp=None, course_hp_max=100.0, course_modifier=None, challenge_manager=None, p1_modifiers=None, p1_buffs=None, p1_debuffs=None):
+                 challenge_manager=None, p1_modifiers=None, extension: GameExtension = None):
         self.mode = mode
         self.ai_difficulty = ai_difficulty
         self.renderer = renderer
@@ -32,12 +33,8 @@ class RhythmGame:
         self.challenge_manager = challenge_manager
         self.newly_completed = []
         self._challenge_checked = False
-        # ── Course mode HP overlay ────────────────────────────────────────
-        self.course_hp      = course_hp        # None means non-course mode
-        self.course_hp_max  = course_hp_max
-        self.course_modifier = course_modifier  # list of modifier tuples or None
+        self.extension = extension
         # Challenge Tracking Flags
-        self.course_failed   = False
         self.ai_paused       = False
         self.ai_restarted    = False
         self.speed_changed   = False
@@ -46,19 +43,6 @@ class RhythmGame:
         self.start_speed     = self.settings.get('speed', 1.0)
         self.lanes_compressed = self.metadata.get('lanes_compressed', False)
         self.used_dfjk       = self.settings.get('keybinds', ['d', 'f', 'j', 'k']) == ['d', 'f', 'j', 'k']
-        
-        # Merge network buffs/debuffs into course_modifier logic
-        if p1_buffs or p1_debuffs:
-            if self.course_modifier is None:
-                self.course_modifier = []
-            for buff in (p1_buffs or []):
-                val = buff.lower()
-                if not val.startswith("buff_"): val = f"buff_{val}"
-                self.course_modifier.append((val, 1))
-            for debuff in (p1_debuffs or []):
-                val = debuff.lower()
-                if not val.startswith("debuff_"): val = f"debuff_{val}"
-                self.course_modifier.append((val, 1))
         
         # Override note_mod if network modifiers insist
         if p1_modifiers:
@@ -188,6 +172,10 @@ class RhythmGame:
             self.ai_dt = 1.0 / 120.0 # 120Hz AI update frequency
             
         self._draw_state_cache = {'p1': {}, 'ai': {}}
+        self._last_draw_state = {}
+
+        if self.extension:
+            self.extension.attach(self)
 
     def _play_sound(self, sid):
         if sid in self.assets.sounds and self.assets.sounds[sid]:
@@ -216,7 +204,9 @@ class RhythmGame:
             self.hit_history.append((t, 0, "MISS"))
             
         self.judgments[key] += 1
-        self._update_course_hp(key)
+
+        if self.extension:
+            self.extension.on_judgment(key, lane if lane is not None else -1, t)
 
         if key in ("PERFECT", "GREAT"):
             self.combo += 1
@@ -224,10 +214,7 @@ class RhythmGame:
             self.combo_timer = t
         elif key == "MISS":
             self.combo = 0
-            
-        if self.mode == 'online_multi':
-            self.net.send_score(self.judgments, self.combo)
-            
+
         if lane is not None:
             eff_skin = self.note_skin if self.note_skin != 'default' else 'default'
             self.effects.append({
@@ -457,6 +444,10 @@ class RhythmGame:
                     if self.engine.update(sim_time_ms, self.lane_pressed):
                         self.state = "RESULT"
                         pygame.mouse.set_visible(True)
+                    elif self.extension and self.extension.should_abort():
+                        self.state = "RESULT"
+                        pygame.mouse.set_visible(True)
+                        pygame.mixer.stop()
                 simulated_real_time += dt_logic
                 accumulator -= dt_logic
                 # Safety break to prevent "Spiral of Death"
@@ -464,31 +455,15 @@ class RhythmGame:
                     accumulator = 0 # Drop frames if we can't keep up
                     break 
             
-            # 1c. Separate AI/Network Update
+            # 1c. Separate AI/Extension Update
             if self.mode == 'ai_multi' and self.state == "PLAYING":
                 if t_now - self.ai_update_timer >= self.ai_dt:
                     sim_time_ms = (t_now - self.start_time) * 1000.0
                     self._update_ai(sim_time_ms)
                     self.ai_update_timer = t_now
-            elif self.mode == 'online_multi' and self.state == "PLAYING":
-                if t_now - self.ai_update_timer >= self.ai_dt:
-                    sim_time_ms = (t_now - self.start_time) * 1000.0
-                    self.ai_engine.update(sim_time_ms)
-                    if self.net.opponent_state:
-                        self.ai_judgments = self.net.opponent_state.get('judgments', self.ai_judgments)
-                        new_combo = self.net.opponent_state.get('combo', self.ai_combo)
-                        if new_combo > self.ai_combo:
-                            self.ai_judgment_text = "HIT"
-                            self.ai_judgment_color = (0, 255, 255)
-                            self.ai_judgment_timer = sim_time_ms
-                        elif new_combo == 0 and self.ai_combo > 0:
-                            self.ai_judgment_text = "MISS"
-                            self.ai_judgment_color = (255, 0, 0)
-                            self.ai_judgment_timer = sim_time_ms
-                        self.ai_combo = new_combo
-                        self.ai_max_combo = max(self.ai_max_combo, self.ai_combo)
-                        self.net.opponent_state = None
-                    self.ai_update_timer = t_now
+            if self.extension and self.state == "PLAYING":
+                sim_time_ms = (t_now - self.start_time) * 1000.0
+                self.extension.on_tick(sim_time_ms)
             
             # 2. Render Loop (Capped)
             t_render_check = time.perf_counter()
@@ -517,8 +492,12 @@ class RhythmGame:
                                     })
                     # Pass offset time to draw for visual adjustment
                     self._draw(now_ms + vis_offset)
+                    if self.extension:
+                        self.extension.draw_overlay(self.renderer, self.window, self._last_draw_state, "playing")
                 elif self.state == "PAUSED":
                     self._draw_paused()
+                    if self.extension:
+                        self.extension.draw_overlay(self.renderer, self.window, self._last_draw_state, "paused")
                 elif self.state == "COUNTDOWN":
                     self._draw_countdown()
                 elif self.state == "RESULT":
@@ -527,6 +506,8 @@ class RhythmGame:
                         self.newly_completed = self.challenge_manager.check_challenges(self.get_stats())
                         self._challenge_checked = True
                     self._draw_result(now_ms + vis_offset)
+                    if self.extension:
+                        self.extension.draw_overlay(self.renderer, self.window, self.get_stats(), "result")
 
                 self.renderer.present()
                 last_render_time = time.perf_counter()
@@ -549,9 +530,9 @@ class RhythmGame:
         accuracy = (p1_ex / max_ex) * 100.0
         
         ai_p1_ex = getattr(self, 'ai_judgments', {}).get("PERFECT", 0) * 2 + getattr(self, 'ai_judgments', {}).get("GREAT", 0)
-        ai_acc = (ai_p1_ex / max_ex) * 100.0 if self.mode in ('ai_multi', 'online_multi') else 0.0
-        
-        return {
+        ai_acc = (ai_p1_ex / max_ex) * 100.0 if self.mode == 'ai_multi' else 0.0
+
+        stats = {
             'mode': self.mode,
             'title': self.title,
             'level': self.metadata.get('level', self.metadata.get('playlevel', '0')),
@@ -561,7 +542,7 @@ class RhythmGame:
             'ai_accuracy': ai_acc,
             'total_score': p1_ex,
             'total_notes': len(self.engine.notes),
-            'failed': self.course_failed,
+            'failed': False,
             'ai_paused': getattr(self, 'ai_paused', False),
             'ai_restarted': getattr(self, 'ai_restarted', False),
             'speed_changed': getattr(self, 'speed_changed', False),
@@ -572,11 +553,14 @@ class RhythmGame:
             'note_mod': getattr(self, 'note_mod', 'None'),
             'has_ln': getattr(self, 'has_ln', False),
             'ai_diff': getattr(self, 'ai_difficulty', 'normal'),
-            'must_win': (self.mode in ('ai_multi', 'online_multi') and p1_ex > ai_p1_ex),
+            'must_win': (self.mode == 'ai_multi' and p1_ex > ai_p1_ex),
             'ai_judgments': getattr(self, 'ai_judgments', None),
             'ai_max_combo': getattr(self, 'ai_max_combo', 0),
             'newly_completed': self.newly_completed
         }
+        if self.extension:
+            stats.update(self.extension.get_extra_stats())
+        return stats
 
     def _update_ai(self, current_time):
         miss_window = JUDGMENT_DEFS["MISS"]["threshold_ms"] * self.hw_mult
@@ -601,10 +585,13 @@ class RhythmGame:
     def _draw(self, t):
         self.renderer.draw_color = (0, 0, 0, 255)
         self.renderer.clear()
-        self.game_renderer.draw_bga(t, self.engine.current_bga_img, self.assets, is_course=(self.course_hp is not None))
-        
+        if self.extension:
+            self.extension.draw_background(self.renderer, self.window)
+        self.game_renderer.draw_bga(t, self.engine.current_bga_img, self.assets)
+
         # Player 1 View
         p1_state = self._get_draw_state('p1', t)
+        self._last_draw_state = p1_state
         self.game_renderer.draw_playing(t, p1_state)
         
         # Effects Rendering (Handles both P1 and AI effects)
@@ -674,9 +661,6 @@ class RhythmGame:
             d['note_skin'] = self.note_skin
             d['is_ai'] = False
             d['measures'] = self.measures
-            d['course_hp']       = self.course_hp
-            d['course_hp_max']   = self.course_hp_max
-            d['course_modifier'] = self.course_modifier
             if self.mode in ('ai_multi', 'online_multi'):
                 d['ai_judgments'] = self.ai_judgments
                 d['ai_hit_history'] = self.ai_hit_history
@@ -780,47 +764,3 @@ class RhythmGame:
             for n in notes:
                 n['lane'] = mapping[n['lane']]
 
-    def _update_course_hp(self, key):
-        if self.course_hp is None: return
-
-        # Constants (Matching course_session.py)
-        MISS_DRAIN    = 8.0
-        GOOD_DRAIN    = 2.0
-        GREAT_REGEN   = 0.5
-        PERFECT_REGEN = 1.0
-
-        drain_val = 0.0
-        regen_val = 0.0
-
-        if key == "PERFECT": regen_val = PERFECT_REGEN
-        elif key == "GREAT": regen_val = GREAT_REGEN
-        elif key == "GOOD":  drain_val = GOOD_DRAIN
-        elif key == "MISS":  drain_val = MISS_DRAIN
-
-        # Modifier adjustments
-        if self.course_modifier:
-            for modifier in self.course_modifier:
-                mod_key = modifier[0]
-                if mod_key == "mod_hp_boost":
-                    regen_val *= 1.5
-                elif mod_key == "mod_hp_regen":
-                    regen_val *= 2.0
-                elif mod_key == "mod_hp_fragile":
-                    drain_val *= 2.0
-                elif mod_key == "mod_hp_drain":
-                    drain_val *= 1.5
-                    regen_val *= 0.5
-                elif mod_key == "mod_perfectionist":
-                    if key != "PERFECT":
-                        if key == "GREAT": drain_val += 1.5
-                        elif key == "GOOD": drain_val += 2.0
-                        elif key == "MISS": drain_val += 1.0
-
-        self.course_hp += (regen_val - drain_val)
-        self.course_hp = max(0.0, min(self.course_hp_max, self.course_hp))
-
-        if self.course_hp <= 0 and not self.course_failed:
-            self.course_failed = True
-            self.state = "RESULT"
-            pygame.mouse.set_visible(True)
-            pygame.mixer.stop()
