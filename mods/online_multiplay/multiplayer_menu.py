@@ -290,7 +290,7 @@ class MultiplayerMenu:
     def _draw(self):
         self.screen.fill((20, 20, 30, 255))
 
-        title_surf = self.title_font.render(_host_t("menu_online_multi"), True, COLOR_ACCENT)
+        title_surf = self.title_font.render(_t("menu_online_multi"), True, COLOR_ACCENT)
         self.screen.blit(title_surf, ((self.w - title_surf.get_width()) // 2, self._s(40)))
 
         if self.state == "INPUT_ADDRESS":

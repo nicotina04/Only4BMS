@@ -63,9 +63,8 @@ class MainMenu:
 
         if mods:
             for mod in mods:
-                mod_name = mod.name  # capture by value
-                mod_action = mod.action
-                self.options.append((lambda n=mod_name: n, mod_action))
+                name_callable = mod.name_fn if mod.name_fn else (lambda n=mod.name: n)
+                self.options.append((name_callable, mod.action))
                 self.is_mod.append(True)
 
         self.options += [

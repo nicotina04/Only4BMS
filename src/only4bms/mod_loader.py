@@ -25,11 +25,13 @@ from typing import Callable
 class ModInfo:
     """Metadata and entry point for a single loaded mod."""
     id: str                # Unique identifier (folder name fallback)
-    name: str              # Display name in the main menu
+    name: str              # Display name in the main menu (static fallback)
     description: str       # Short description
     version: str           # Version string
     action: str            # Action key returned by MainMenu (e.g. "MOD_course_mode")
     run_fn: Callable       # run(settings, renderer, window, **ctx) -> None
+    name_fn: Callable = None   # Optional: callable() -> str for localised display name
+    setup_fn: Callable = None  # Optional: setup(ctx) called once after host context is ready
 
 
 def discover_mods() -> list:
@@ -79,6 +81,8 @@ def discover_mods() -> list:
             mod_name = getattr(module, "MOD_NAME", entry)
             mod_desc = getattr(module, "MOD_DESCRIPTION", "")
             mod_ver = getattr(module, "MOD_VERSION", "1.0.0")
+            name_fn = getattr(module, "get_display_name", None)
+            setup_fn = getattr(module, "setup", None)
 
             mods.append(ModInfo(
                 id=mod_id,
@@ -87,6 +91,8 @@ def discover_mods() -> list:
                 version=mod_ver,
                 action=f"MOD_{mod_id}",
                 run_fn=run_fn,
+                name_fn=name_fn,
+                setup_fn=setup_fn if callable(setup_fn) else None,
             ))
             print(f"[ModLoader] Loaded: '{mod_name}' v{mod_ver}  ({entry})")
 
@@ -94,3 +100,18 @@ def discover_mods() -> list:
             print(f"[ModLoader] Failed to load '{entry}': {exc}")
 
     return mods
+
+
+def initialize_mods(mods: list, ctx: dict) -> None:
+    """
+    Call each mod's setup(ctx) if it defines one.
+    Runs once after the shared context (challenge_manager, etc.) is ready.
+    """
+    for mod in mods:
+        if mod.setup_fn is None:
+            continue
+        try:
+            mod.setup_fn(ctx)
+            print(f"[ModLoader] setup() ok: '{mod.id}'")
+        except Exception as exc:
+            print(f"[ModLoader] setup() failed for '{mod.id}': {exc}")

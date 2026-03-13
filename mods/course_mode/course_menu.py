@@ -81,7 +81,7 @@ class CourseMenu:
                 c = [int(25 * grad), int(25 * grad), int(45 * grad + 25)]
                 pygame.draw.line(self.screen, c, (0, y), (self.w, y))
 
-            title = self.title_font.render(_host_t("menu_course"), True, (0, 255, 200))
+            title = self.title_font.render(_t("menu_course"), True, (0, 255, 200))
             self.screen.blit(title, (self._cx(title), self._s(60)))
 
             panel_w, panel_h = self._s(500), self._s(380)

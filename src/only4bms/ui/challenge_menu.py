@@ -6,20 +6,20 @@ from only4bms import i18n as _i18n
 from ..game.challenge import ChallengeManager
 
 class ChallengeMenu:
-    def __init__(self, settings, renderer, window):
+    def __init__(self, settings, renderer, window, challenge_manager=None):
         self.settings = settings
         self.renderer = renderer
         self.window = window
         self.w, self.h = window.size
         self.sx, self.sy = self.w / 800.0, self.h / 600.0
-        
+
         self.screen = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
         self.font = _i18n.font("menu_option", self.sy)
         self.title_font = _i18n.font("menu_title", self.sy, bold=True)
         self.small_font = _i18n.font("menu_small", self.sy)
         self.desc_font = _i18n.font("menu_small", self.sy)
-        
-        self.manager = ChallengeManager()
+
+        self.manager = challenge_manager if challenge_manager is not None else ChallengeManager()
         # Build display list: regular challenges + hidden section (if applicable)
         self._rebuild_options()
         self.selected_index = 0

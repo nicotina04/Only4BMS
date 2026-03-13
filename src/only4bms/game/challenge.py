@@ -54,18 +54,6 @@ def get_default_challenges():
             "condition": {"must_win": True, "mode": "ai_multi"}
         },
         {
-            "id": "course_clear",
-            "condition": {"mode": "course_end"}
-        },
-        {
-            "id": "course_full_hp",
-            "condition": {"min_hp": 100.0, "mode": "course_stage"}
-        },
-        {
-            "id": "course_advanced",
-            "condition": {"min_difficulty": 2, "mode": "course_end"} # 0: BEG, 1: INT, 2: ADV, 3: ORD
-        },
-        {
             "id": "you_are_already_dead",
             "condition": {"mode": "ai_multi", "ai_difficulty": "hard"}
         },
@@ -92,10 +80,6 @@ def get_default_challenges():
         {
             "id": "bms_player",
             "condition": {"mode": "scan_complete", "min_bms_count": 1}
-        },
-        {
-            "id": "unbreakable_spirit",
-            "condition": {"mode": "course_end", "min_consecutive_courses": 2}
         },
         {
             "id": "mod_try",
@@ -132,16 +116,6 @@ def get_default_challenges():
                 {"mode": "ai_multi", "must_win": True, "ai_difficulty": "hard"}
             ]
         },
-        {
-            "id": "forest_of_trials",
-            "hidden": True,
-            "condition": {
-                "mode": "course_stage",
-                "difficulty_exact": "ORDEAL",
-                "must_clear": True,
-                "proceed_to_next": True,
-            }
-        }
     ]
 
 class ChallengeManager:
@@ -150,6 +124,14 @@ class ChallengeManager:
         self.challenges = get_default_challenges()
         self.completed_ids = set()
         self.load_progress()
+
+    def register_challenges(self, challenges: list) -> None:
+        """Register additional challenges from a mod. Duplicate IDs are ignored."""
+        existing_ids = {c['id'] for c in self.challenges}
+        for ch in challenges:
+            if ch['id'] not in existing_ids:
+                self.challenges.append(ch)
+                existing_ids.add(ch['id'])
 
     def load_progress(self):
         """ Load user progress. """

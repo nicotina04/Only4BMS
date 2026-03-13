@@ -166,10 +166,8 @@ STRINGS = {
     # ╚══════════════════════════════════════════════════════════════════════╝
     "en": {
         # Main Menu
-        "menu_course": "COURSE MODE",
         "menu_single": "SINGLE PLAYER",
         "menu_ai_multi": "AI MULTI PLAYER",
-        "menu_online_multi": "ONLINE MULTIPLAYER",
         "menu_challenge": "CHALLENGE MODE",
         "menu_settings": "SETTINGS",
         "menu_quit": "QUIT",
@@ -194,12 +192,6 @@ STRINGS = {
         "ch_multi_win_desc": "Win a match against the AI.",
         "ch_combo_100_lv5_title": "Combo Master",
         "ch_combo_100_lv5_desc": "Achieve 100+ combo on a level 5+ song.",
-        "ch_course_clear_title": "Course Survivor",
-        "ch_course_clear_desc": "Complete any course.",
-        "ch_course_full_hp_title": "Healthy Spirit",
-        "ch_course_full_hp_desc": "Finish a stage with 100% HP in course mode.",
-        "ch_course_advanced_title": "Elite Challenger",
-        "ch_course_advanced_desc": "Complete an Advanced or higher course.",
         
         
         
@@ -322,8 +314,6 @@ STRINGS = {
         "ch_unprecedented_system_desc": "Clear a section with holding hits (long notes).",
         "ch_bms_player_title": "BMS Player",
         "ch_bms_player_desc": "Play a newly scanned folder.",
-        "ch_unbreakable_spirit_title": "Unbreakable Spirit",
-        "ch_unbreakable_spirit_desc": "Clear Course mode twice in a row without stopping.",
         "ch_mod_try_title": "Mod Try!",
         "ch_mod_try_desc": "Play a song with a note modifier enabled.",
         "ch_judgment_artisan_title": "Judgment Artisan",
@@ -338,8 +328,6 @@ STRINGS = {
         "ch_first_time_rhythm_game_desc": "Complete a song with less than 50% accuracy.",
         "ch_perfect_player_title": "The Perfect One",
         "ch_perfect_player_desc": "Get a PERFECT score in single play or beat the AI hard bot.",
-        "ch_forest_of_trials_title": "Forest of Trials",
-        "ch_forest_of_trials_desc": "Complete an Ordeal course trial and proceed to the next song.",
         "challenge_hidden_label": "HIDDEN",
         "note_skin_label": "NOTE SKIN",
         "note_skin_default": "DEFAULT",
@@ -356,10 +344,8 @@ STRINGS = {
     # ║  KOREAN (한국어)                                                    ║
     # ╚══════════════════════════════════════════════════════════════════════╝
     "ko": {
-        "menu_course": "코스 모드",
         "menu_single": "싱글 플레이",
         "menu_ai_multi": "AI 멀티 플레이",
-        "menu_online_multi": "온라인 멀티 플레이",
         "menu_challenge": "도전과제",
         "menu_settings": "설정",
         "menu_quit": "종료",
@@ -384,12 +370,6 @@ STRINGS = {
         "ch_multi_win_desc": "AI를 상대로 승리하세요.",
         "ch_combo_100_lv5_title": "콤보 유지",
         "ch_combo_100_lv5_desc": "5레벨 이상의 곡에서 100 콤보 이상을 달성하세요.",
-        "ch_course_clear_title": "코스 생존자",
-        "ch_course_clear_desc": "아무 코스나 완주하세요.",
-        "ch_course_full_hp_title": "강철 정신",
-        "ch_course_full_hp_desc": "코스 모드에서 HP 100%로 스테이지를 종료하세요.",
-        "ch_course_advanced_title": "엘리트 도전자",
-        "ch_course_advanced_desc": "Advanced 이상의 코스를 완주하세요.",
         
         
         
@@ -504,8 +484,6 @@ STRINGS = {
         "ch_unprecedented_system_desc": "Only4BMS만의 홀딩히트 구간을 통과하세요.",
         "ch_bms_player_title": "BMS 플레이어",
         "ch_bms_player_desc": "bms 폴더에 곡 폴더를 생성하고 게임에서 인식시키세요.",
-        "ch_unbreakable_spirit_title": "중요한 건 꺾이지 않는 마음",
-        "ch_unbreakable_spirit_desc": "코스 중간에 멈추지 않고 연속으로 2번 이상 완주하세요.",
         "ch_mod_try_title": "모드 트라이!",
         "ch_mod_try_desc": "모드를 켜고 플레이하세요.",
         "ch_judgment_artisan_title": "판정 장인",
@@ -520,8 +498,6 @@ STRINGS = {
         "ch_first_time_rhythm_game_desc": "판정 정확도 50% 미만으로 곡을 완주하세요.",
         "ch_perfect_player_title": "완벽한 사람",
         "ch_perfect_player_desc": "싱글 플레이에서 퍼펙트하거나 AI 하드 봇에게 이기세요.",
-        "ch_forest_of_trials_title": "시련의 숲",
-        "ch_forest_of_trials_desc": "코스의 시련 난이도를 완주하고 다음 곡을 시작하세요.",
         "challenge_hidden_label": "히든",
         "note_skin_label": "노트 스킨",
         "note_skin_default": "기본",
@@ -538,10 +514,8 @@ STRINGS = {
     # ║  JAPANESE (日本語)                                                  ║
     # ╚══════════════════════════════════════════════════════════════════════╝
     "ja": {
-        "menu_course": "コースモード",
         "menu_single": "シングルプレイ",
         "menu_ai_multi": "AIマルチプレイ",
-        "menu_online_multi": "オンラインマルチプレイ",
         "menu_challenge": "チャレンジモード",
         "menu_settings": "設定",
         "menu_quit": "終了",
@@ -566,12 +540,6 @@ STRINGS = {
         "ch_multi_win_desc": "AIに勝利する。",
         "ch_combo_100_lv5_title": "コンボマスター",
         "ch_combo_100_lv5_desc": "Lv.5以上の曲で100コンボ以上達成。",
-        "ch_course_clear_title": "コースサバイバー",
-        "ch_course_clear_desc": "任意のコースを完走する。",
-        "ch_course_full_hp_title": "鋼の精神",
-        "ch_course_full_hp_desc": "コースモードでHP100%でステージを終了する。",
-        "ch_course_advanced_title": "エリートチャレンジャー",
-        "ch_course_advanced_desc": "Advanced以上のコースを完走する。",
         
         
         
@@ -687,8 +655,6 @@ STRINGS = {
         "ch_unprecedented_system_desc": "ホールドヒット（ロングノーツ）区間をクリアする。",
         "ch_bms_player_title": "BMSプレイヤー",
         "ch_bms_player_desc": "新しくスキャンしたフォルダをプレイする。",
-        "ch_unbreakable_spirit_title": "不屈の精神",
-        "ch_unbreakable_spirit_desc": "コースモードを中断せずに2回連続でクリアする。",
         "ch_mod_try_title": "モディファイア・トライ！",
         "ch_mod_try_desc": "ノートモディファイアを有効にしてプレイする。",
         "ch_judgment_artisan_title": "判定の職人",
@@ -703,8 +669,6 @@ STRINGS = {
         "ch_first_time_rhythm_game_desc": "精度50%未満で曲を完走する。",
         "ch_perfect_player_title": "完璧なプレイヤー",
         "ch_perfect_player_desc": "シングルプレイでパーフェクトを取るか、AIハードボットに勝利してください。",
-        "ch_forest_of_trials_title": "試練の森",
-        "ch_forest_of_trials_desc": "コースモードの試練難易度を完走し、次の曲に進んでください。",
         "challenge_hidden_label": "HIDDEN",
         "note_skin_label": "ノートスキン",
         "note_skin_default": "デフォルト",
@@ -721,7 +685,6 @@ STRINGS = {
     # ║  CHINESE SIMPLIFIED (中文简体)                                      ║
     # ╚══════════════════════════════════════════════════════════════════════╝
     "zh": {
-        "menu_course": "课程模式",
         "menu_single": "单人模式",
         "menu_ai_multi": "AI对战模式",
         "menu_challenge": "挑战模式",
@@ -748,12 +711,6 @@ STRINGS = {
         "ch_multi_win_desc": "在对战中击败 AI。",
         "ch_combo_100_lv5_title": "连击大师",
         "ch_combo_100_lv5_desc": "在 Lv.5 或以上的歌曲中达成 100 连击。",
-        "ch_course_clear_title": "课程幸存者",
-        "ch_course_clear_desc": "完成任意课程。",
-        "ch_course_full_hp_title": "钢铁意志",
-        "ch_course_full_hp_desc": "在课程模式中以 100% HP 结束关卡。",
-        "ch_course_advanced_title": "精英挑战者",
-        "ch_course_advanced_desc": "完成 Advanced 或更难的课程。",
         
         
         
@@ -867,8 +824,6 @@ STRINGS = {
         "ch_unprecedented_system_desc": "通关带有长按音符（Long Note）的阶段。",
         "ch_bms_player_title": "BMS 玩家",
         "ch_bms_player_desc": "游玩新扫描的文件夹。",
-        "ch_unbreakable_spirit_title": "不屈意志",
-        "ch_unbreakable_spirit_desc": "连续两次完成课程模式且不中途停止。",
         "ch_mod_try_title": "模组尝试！",
         "ch_mod_try_desc": "在开启音符模组的情况下游玩歌曲。",
         "ch_judgment_artisan_title": "判定工匠",
@@ -883,8 +838,6 @@ STRINGS = {
         "ch_first_time_rhythm_game_desc": "以低于 50% 的准确度完成歌曲。",
         "ch_perfect_player_title": "完胜玩家",
         "ch_perfect_player_desc": "在单人游戏中获得 PERFECT 分数或击败 AI 高级机器人。",
-        "ch_forest_of_trials_title": "试炼之森",
-        "ch_forest_of_trials_desc": "完成课程试炼难度并开始下一首歌曲。",
         "challenge_hidden_label": "隐藏",
         "note_skin_label": "音符皮肤",
         "note_skin_default": "默认",
@@ -902,7 +855,6 @@ STRINGS = {
     # ║  THAI (ไทย)                                                        ║
     # ╚══════════════════════════════════════════════════════════════════════╝
     "th": {
-        "menu_course": "โหมดคอร์ส",
         "menu_single": "เล่นคนเดียว",
         "menu_ai_multi": "เล่นกับ AI",
         "menu_challenge": "โหมดท้าทาย",
@@ -929,12 +881,6 @@ STRINGS = {
         "ch_multi_win_desc": "เอาชนะ AI ในการดวล",
         "ch_combo_100_lv5_title": "เจ้าแห่งคอมโบ",
         "ch_combo_100_lv5_desc": "ทำได้ 100 คอมโบขึ้นไปในเพลงเลเวล 5",
-        "ch_course_clear_title": "ผู้รอดชีวิตจากคอร์ส",
-        "ch_course_clear_desc": "เล่นจบโหมดคอร์สใดก็ได้",
-        "ch_course_full_hp_title": "จิตวิญญาณที่แข็งแกร่ง",
-        "ch_course_full_hp_desc": "จบด่านด้วย HP 100% ในโหมดคอร์ส",
-        "ch_course_advanced_title": "ผู้ท้าทายระดับสูง",
-        "ch_course_advanced_desc": "เล่นจบโหมดคอร์ส Advanced ขึ้นไป",
 
         
         
@@ -1049,8 +995,6 @@ STRINGS = {
         "ch_unprecedented_system_desc": "เคลียร์ช่วงที่มีโน้ตยาว (Long Notes)",
         "ch_bms_player_title": "ผู้เล่น BMS",
         "ch_bms_player_desc": "เล่นโฟลเดอร์ที่เพิ่งสแกนใหม่",
-        "ch_unbreakable_spirit_title": "จิตวิญญาณที่ไม่ย่อท้อ",
-        "ch_unbreakable_spirit_desc": "เคลียร์โหมดคอร์สสองครั้งติดต่อกันโดยไม่หยุด",
         "ch_mod_try_title": "ลองใช้ Mod!",
         "ch_mod_try_desc": "เล่นเพลงด้วยการเปิดใช้งาน Note Modifier",
         "ch_judgment_artisan_title": "ช่างฝีมือด้านคำตัดสิน",
@@ -1065,8 +1009,6 @@ STRINGS = {
         "ch_first_time_rhythm_game_desc": "เล่นจบหนึ่งเพลงด้วยความแม่นยำต่ำกว่า 50%",
         "ch_perfect_player_title": "ผู้เล่นที่สมบูรณ์แบบ",
         "ch_perfect_player_desc": "ได้รับคะแนน PERFECT ในการเล่นคนเดียวหรือเอาชนะ AI บอทระดับยาก",
-        "ch_forest_of_trials_title": "ป่าแห่งการทดสอบ",
-        "ch_forest_of_trials_desc": "ผ่านการทดสอบระดับความยาก Ordeal ในโหมดคอร์สและเข้าสู่เพลงถัดไป",
         "challenge_hidden_label": "ลับ",
         "note_skin_label": "สกินโน้ต",
         "note_skin_default": "พื้นฐาน",
@@ -1084,7 +1026,6 @@ STRINGS = {
     # ║  PORTUGUESE (Português)                                            ║
     # ╚══════════════════════════════════════════════════════════════════════╝
     "pt": {
-        "menu_course": "MODO CURSO",
         "menu_single": "UM JOGADOR",
         "menu_ai_multi": "MULTIJOGADOR IA",
         "menu_challenge": "MODO DESAFIO",
@@ -1111,12 +1052,6 @@ STRINGS = {
         "ch_multi_win_desc": "Vença uma partida contra a IA.",
         "ch_combo_100_lv5_title": "Mestre do Combo",
         "ch_combo_100_lv5_desc": "Consiga 100+ combos no nível 5+.",
-        "ch_course_clear_title": "Sobrevivente do Curso",
-        "ch_course_clear_desc": "Complete qualquer curso.",
-        "ch_course_full_hp_title": "Espírito Saudável",
-        "ch_course_full_hp_desc": "Termine uma fase com 100% HP no modo curso.",
-        "ch_course_advanced_title": "Desafiante de Elite",
-        "ch_course_advanced_desc": "Complete um curso Advanced ou superior.",
 
         
         
@@ -1231,8 +1166,6 @@ STRINGS = {
         "ch_unprecedented_system_desc": "Conclua uma seção com notas longas (long notes).",
         "ch_bms_player_title": "Jogador de BMS",
         "ch_bms_player_desc": "Jogue em uma pasta recém-escaneada.",
-        "ch_unbreakable_spirit_title": "Espírito Inquebrável",
-        "ch_unbreakable_spirit_desc": "Complete o modo Curso duas vezes seguidas sem parar.",
         "ch_mod_try_title": "Tentando Mods!",
         "ch_mod_try_desc": "Jogue uma música com um modificador de nota ativado.",
         "ch_judgment_artisan_title": "Artesão do Julgamento",
@@ -1247,8 +1180,6 @@ STRINGS = {
         "ch_first_time_rhythm_game_desc": "Complete uma música com menos de 50% de precisão.",
         "ch_perfect_player_title": "O Perfeito",
         "ch_perfect_player_desc": "Obtenha uma pontuação PERFECT no jogo individual ou vença o bot de IA difícil.",
-        "ch_forest_of_trials_title": "Floresta de Provações",
-        "ch_forest_of_trials_desc": "Complete um desafio de percurso Ordeal e prossiga para a próxima música.",
         "challenge_hidden_label": "OCULTO",
         "note_skin_label": "SKIN DE NOTA",
         "note_skin_default": "PADRÃO",
@@ -1265,7 +1196,6 @@ STRINGS = {
     # ║  INDONESIAN (Bahasa Indonesia)                                     ║
     # ╚══════════════════════════════════════════════════════════════════════╝
     "id": {
-        "menu_course": "MODE KURSUS",
         "menu_single": "PEMAIN TUNGGAL",
         "menu_ai_multi": "MULTI PEMAIN AI",
         "menu_challenge": "MODE TANTANGAN",
@@ -1292,12 +1222,6 @@ STRINGS = {
         "ch_multi_win_desc": "Menangkan pertandingan melawan AI.",
         "ch_combo_100_lv5_title": "Ahli Combo",
         "ch_combo_100_lv5_desc": "Dapatkan 100+ combo di level 5+. ",
-        "ch_course_clear_title": "Kursus Penyintas",
-        "ch_course_clear_desc": "Selesaikan kursus apa pun.",
-        "ch_course_full_hp_title": "Semangat Baja",
-        "ch_course_full_hp_desc": "Selesaikan tahap dengan 100% HP di mode kursus.",
-        "ch_course_advanced_title": "Penantang Elit",
-        "ch_course_advanced_desc": "Selesaikan kursus Advanced atau lebih sulit.",
 
         
         
@@ -1412,8 +1336,6 @@ STRINGS = {
         "ch_unprecedented_system_desc": "Selesaikan bagian dengan not tahan (long notes).",
         "ch_bms_player_title": "Pemain BMS",
         "ch_bms_player_desc": "Mainkan folder yang baru saja dipindai.",
-        "ch_unbreakable_spirit_title": "Semangat Tak Terpatahkan",
-        "ch_unbreakable_spirit_desc": "Selesaikan mode Kursus dua kali berturut-turut tanpa berhenti.",
         "ch_mod_try_title": "Coba Mod!",
         "ch_mod_try_desc": "Mainkan lagu dengan modifikator not diaktifkan.",
         "ch_judgment_artisan_title": "Seniman Penilaian",
@@ -1428,8 +1350,6 @@ STRINGS = {
         "ch_first_time_rhythm_game_desc": "Lengkapkan lagu dengan ketepatan kurang daripada 50%.",
         "ch_perfect_player_title": "Pemain Sempurna",
         "ch_perfect_player_desc": "Dapatkan skor PERFECT dalam permainan tunggal atau kalahkan bot AI sukar.",
-        "ch_forest_of_trials_title": "Hutan Cubaan",
-        "ch_forest_of_trials_desc": "Lengkapkan percubaan kursus Ordeal dan teruskan ke lagu seterusnya.",
         "challenge_hidden_label": "TERSEMBUNYI",
         "note_skin_label": "KULIT NOTA",
         "note_skin_default": "ASAL",
@@ -1446,7 +1366,6 @@ STRINGS = {
     # ║  SPANISH (Español)                                                 ║
     # ╚══════════════════════════════════════════════════════════════════════╝
     "es": {
-        "menu_course": "MODO CURSO",
         "menu_single": "UN JUGADOR",
         "menu_ai_multi": "MULTIJUGADOR IA",
         "menu_challenge": "MODO DESAFÍO",
@@ -1473,12 +1392,6 @@ STRINGS = {
         "ch_multi_win_desc": "Gana un combate contra la IA.",
         "ch_combo_100_lv5_title": "Maestro del Combo",
         "ch_combo_100_lv5_desc": "Consigue 100+ combos en nivel 5+.",
-        "ch_course_clear_title": "Superviviente",
-        "ch_course_clear_desc": "Completa cualquier curso.",
-        "ch_course_full_hp_title": "Espíritu Sano",
-        "ch_course_full_hp_desc": "Termina una fase con 100% HP en modo curso.",
-        "ch_course_advanced_title": "Desafiante de Élite",
-        "ch_course_advanced_desc": "Completa un curso Advanced o superior.",
 
         
         
@@ -1593,8 +1506,6 @@ STRINGS = {
         "ch_unprecedented_system_desc": "Completa una sección con notas largas (long notes).",
         "ch_bms_player_title": "Jugador de BMS",
         "ch_bms_player_desc": "Juega una carpeta recién escaneada.",
-        "ch_unbreakable_spirit_title": "Espíritu Inquebrantable",
-        "ch_unbreakable_spirit_desc": "Completa el modo Curso dos veces seguidas sin parar.",
         "ch_mod_try_title": "¡Prueba de Mods!",
         "ch_mod_try_desc": "Juega una canción con un modificador de nota activado.",
         "ch_judgment_artisan_title": "Artesano del Juicio",
@@ -1609,8 +1520,6 @@ STRINGS = {
         "ch_first_time_rhythm_game_desc": "Completa una canción con menos del 50% de precisión.",
         "ch_perfect_player_title": "El Perfecto",
         "ch_perfect_player_desc": "Consigue una puntuación PERFECT en solitario o vence al bot de IA difícil.",
-        "ch_forest_of_trials_title": "Bosque de Pruebas",
-        "ch_forest_of_trials_desc": "Completa una prueba de curso Ordeal y continúa con la siguiente canción.",
         "challenge_hidden_label": "OCULTO",
         "note_skin_label": "SKIN DE NOTA",
         "note_skin_default": "ESTÁNDAR",
@@ -1627,7 +1536,6 @@ STRINGS = {
     # ║  FRENCH (Français)                                                 ║
     # ╚══════════════════════════════════════════════════════════════════════╝
     "fr": {
-        "menu_course": "MODE COURSE",
         "menu_single": "SOLO",
         "menu_ai_multi": "MULTI IA",
         "menu_challenge": "MODE DÉFI",
@@ -1654,12 +1562,6 @@ STRINGS = {
         "ch_multi_win_desc": "Gagne un match contre l'IA.",
         "ch_combo_100_lv5_title": "Maître du Combo",
         "ch_combo_100_lv5_desc": "Fais 100+ combos sur niveau 5+.",
-        "ch_course_clear_title": "Survivant du Parcours",
-        "ch_course_clear_desc": "Termine n'importe quel parcours.",
-        "ch_course_full_hp_title": "Esprit Robuste",
-        "ch_course_full_hp_desc": "Termine une étape avec 100% HP en mode parcours.",
-        "ch_course_advanced_title": "Défi Élite",
-        "ch_course_advanced_desc": "Termine un parcours Advanced ou supérieur.",
 
         
         
@@ -1774,8 +1676,6 @@ STRINGS = {
         "ch_unprecedented_system_desc": "Réussissez une section avec des notes longues (long notes).",
         "ch_bms_player_title": "Joueur de BMS",
         "ch_bms_player_desc": "Jouez un dossier nouvellement scanné.",
-        "ch_unbreakable_spirit_title": "Esprit Incassable",
-        "ch_unbreakable_spirit_desc": "Terminez le mode Course deux fois de suite sans vous arrêter.",
         "ch_mod_try_title": "Essai de Mod !",
         "ch_mod_try_desc": "Jouez une chanson avec un modificateur de note activé.",
         "ch_judgment_artisan_title": "Artisan du Jugement",
@@ -1790,8 +1690,6 @@ STRINGS = {
         "ch_first_time_rhythm_game_desc": "Terminez une chanson avec moins de 50 % de précision.",
         "ch_perfect_player_title": "Le Parfait",
         "ch_perfect_player_desc": "Obtenez un score PERFECT en mode solo ou battez le bot IA difficile.",
-        "ch_forest_of_trials_title": "Forêt des Épreuves",
-        "ch_forest_of_trials_desc": "Terminez une épreuve de parcours Épreuve et passez à la chanson suivante.",
         "challenge_hidden_label": "CACHÉ",
         "note_skin_label": "SKIN DE NOTE",
         "note_skin_default": "PAR DÉFAUT",
@@ -1808,7 +1706,6 @@ STRINGS = {
     # ║  ITALIAN (Italiano)                                                ║
     # ╚══════════════════════════════════════════════════════════════════════╝
     "it": {
-        "menu_course": "MODALITÀ CORSO",
         "menu_single": "GIOCATORE SINGOLO",
         "menu_ai_multi": "MULTI IA",
         "menu_challenge": "MODALITÀ SFIDA",
@@ -1835,12 +1732,6 @@ STRINGS = {
         "ch_multi_win_desc": "Vinci un match contro l'IA.",
         "ch_combo_100_lv5_title": "Maestro Combo",
         "ch_combo_100_lv5_desc": "Ottieni 100+ combo in livello 5+.",
-        "ch_course_clear_title": "Sopravvissuto",
-        "ch_course_clear_desc": "Completa un corso qualsiasi.",
-        "ch_course_full_hp_title": "Spirito d'Acciaio",
-        "ch_course_full_hp_desc": "Finisci uno stage con HP al 100% nel corso.",
-        "ch_course_advanced_title": "Sfidante d'Elite",
-        "ch_course_advanced_desc": "Completa un corso Advanced o superiore.",
 
         
         
@@ -1955,8 +1846,6 @@ STRINGS = {
         "ch_unprecedented_system_desc": "Completa una sezione con note lunghe (long notes).",
         "ch_bms_player_title": "Giocatore di BMS",
         "ch_bms_player_desc": "Gioca in una cartella appena scansionata.",
-        "ch_unbreakable_spirit_title": "Spirito Incrollabile",
-        "ch_unbreakable_spirit_desc": "Completa la modalità Corso due volte di seguito senza fermarti.",
         "ch_mod_try_title": "Prova Mod!",
         "ch_mod_try_desc": "Gioca un brano con un modificador di note attivato.",
         "ch_judgment_artisan_title": "Artigiano del Giudizio",
@@ -1971,8 +1860,6 @@ STRINGS = {
         "ch_first_time_rhythm_game_desc": "Completa un brano con meno del 50% di precisione.",
         "ch_perfect_player_title": "Il Perfetto",
         "ch_perfect_player_desc": "Ottieni un punteggio PERFECT nel gioco singolo o sconfiggi il bot IA difficile.",
-        "ch_forest_of_trials_title": "Foresta delle Prove",
-        "ch_forest_of_trials_desc": "Completa una prova del percorso Ordeal e passa alla prossima canzone.",
         "challenge_hidden_label": "NASCOSTO",
         "note_skin_label": "SKIN NOTA",
         "note_skin_default": "DEFAULT",
@@ -1990,7 +1877,6 @@ STRINGS = {
     # ║  GERMAN (Deutsch)                                                  ║
     # ╚══════════════════════════════════════════════════════════════════════╝
     "de": {
-        "menu_course": "KURSMODUS",
         "menu_single": "EINZELSPIELER",
         "menu_ai_multi": "KI-MEHRSPIELER",
         "menu_challenge": "HERAUSFORDERUNG",
@@ -2017,12 +1903,6 @@ STRINGS = {
         "ch_multi_win_desc": "Gewinne gegen die KI.",
         "ch_combo_100_lv5_title": "Combo-Meister",
         "ch_combo_100_lv5_desc": "Schaffe 100+ Combos in Level 5+.",
-        "ch_course_clear_title": "Kurs-Überlebender",
-        "ch_course_clear_desc": "Beende einen beliebigen Kurs.",
-        "ch_course_full_hp_title": "Eiserner Wille",
-        "ch_course_full_hp_desc": "Beende eine Kurs-Stufe mit 100% HP.",
-        "ch_course_advanced_title": "Elite-Herausforderer",
-        "ch_course_advanced_desc": "Beende einen Advanced-Kurs.",
 
         
         
@@ -2137,8 +2017,6 @@ STRINGS = {
         "ch_unprecedented_system_desc": "Schließe einen Abschnitt mit Haltenoten (Long Notes) ab.",
         "ch_bms_player_title": "BMS-Spieler",
         "ch_bms_player_desc": "Spiele einen neu gescannten Ordner.",
-        "ch_unbreakable_spirit_title": "Unbeugsamer Geist",
-        "ch_unbreakable_spirit_desc": "Schließe den Kurs-Modus zweimal hintereinander ab, ohne anzuhalten.",
         "ch_mod_try_title": "Mod-Versuch!",
         "ch_mod_try_desc": "Spiele einen Song mit aktivem Noten-Modifikator.",
         "ch_judgment_artisan_title": "Urteils-Handwerker",
@@ -2153,8 +2031,6 @@ STRINGS = {
         "ch_first_time_rhythm_game_desc": "Schließe einen Song mit weniger als 50% Genauigkeit ab.",
         "ch_perfect_player_title": "Der Perfekte",
         "ch_perfect_player_desc": "Erzielen Sie ein PERFECT im Einzelspiel oder besiegen Sie den harten KI-Bot.",
-        "ch_forest_of_trials_title": "Wald der Prüfungen",
-        "ch_forest_of_trials_desc": "Schließen Sie eine Ordeal-Kursprüfung ab und fahren Sie mit dem nächsten Lied fort.",
         "challenge_hidden_label": "VERSTECKT",
         "note_skin_label": "NOTEN-SKIN",
         "note_skin_default": "STANDARD",

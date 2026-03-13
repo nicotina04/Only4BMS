@@ -27,6 +27,11 @@ MOD_DESCRIPTION = "1 vs 1 real-time multiplayer. Connect to a server and battle.
 MOD_VERSION = "1.0.0"
 
 
+def get_display_name() -> str:
+    from .i18n import t as _t
+    return _t("menu_online_multi")
+
+
 def run(settings, renderer, window, **ctx):
     """
     Entry point called by main.py when the player selects 'Online Multiplay'.

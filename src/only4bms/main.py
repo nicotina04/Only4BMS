@@ -334,7 +334,7 @@ def main():
     challenge_manager = ChallengeManager()
 
     # Discover and load mods from the mods/ directory
-    from only4bms.mod_loader import discover_mods
+    from only4bms.mod_loader import discover_mods, initialize_mods
     mods = discover_mods()
     mod_map = {mod.action: mod for mod in mods}
 
@@ -343,6 +343,9 @@ def main():
         "init_mixer_fn": _init_mixer,
         "challenge_manager": challenge_manager,
     }
+
+    # Let each mod register its challenges and i18n strings
+    initialize_mods(mods, _mod_ctx)
 
     # Main loop
     while True:
@@ -358,7 +361,7 @@ def main():
 
         if menu_action == "CHALLENGE":
             from only4bms.ui.challenge_menu import ChallengeMenu
-            ChallengeMenu(settings, renderer=renderer, window=window).run()
+            ChallengeMenu(settings, renderer=renderer, window=window, challenge_manager=challenge_manager).run()
             continue
 
         # ── Mod dispatch ─────────────────────────────────────────────────

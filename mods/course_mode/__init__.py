@@ -25,6 +25,46 @@ MOD_DESCRIPTION = "Roguelike training — clear stages to survive. HP drops on m
 MOD_VERSION = "1.0.0"
 
 
+_COURSE_CHALLENGES = [
+    {"id": "course_clear",       "condition": {"mode": "course_end"}},
+    {"id": "course_full_hp",     "condition": {"min_hp": 100.0, "mode": "course_stage"}},
+    {"id": "course_advanced",    "condition": {"min_difficulty": 2, "mode": "course_end"}},
+    {"id": "unbreakable_spirit", "condition": {"mode": "course_end", "min_consecutive_courses": 2}},
+    {
+        "id": "forest_of_trials",
+        "hidden": True,
+        "condition": {
+            "mode": "course_stage",
+            "difficulty_exact": "ORDEAL",
+            "must_clear": True,
+            "proceed_to_next": True,
+        },
+    },
+]
+
+
+def get_display_name() -> str:
+    from .i18n import t as _t
+    return _t("menu_course")
+
+
+def setup(ctx: dict) -> None:
+    """Register course challenges and i18n strings into the host."""
+    from .i18n import _STRINGS
+    import only4bms.i18n as _host_i18n
+
+    # Register challenge strings for every language defined in this mod
+    for lang, strings in _STRINGS.items():
+        ch_strings = {k: v for k, v in strings.items() if k.startswith("ch_")}
+        if ch_strings:
+            _host_i18n.register_strings(lang, ch_strings)
+
+    # Register challenge definitions
+    cm = ctx.get("challenge_manager")
+    if cm:
+        cm.register_challenges(_COURSE_CHALLENGES)
+
+
 def run(settings, renderer, window, **ctx):
     """
     Entry point called by main.py when the player selects 'Course Mode'.

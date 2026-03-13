@@ -5,6 +5,7 @@ All strings used by multiplayer_menu.py and extension.py.
 
 _STRINGS = {
     "en": {
+        "menu_online_multi": "ONLINE MULTIPLAYER",
         "mp_enter_server": "Enter Server Address:",
         "mp_connect_hint": "Press ENTER to connect (Esc to cancel)",
         "mp_connecting": "Connecting to server{dots}",
@@ -30,6 +31,7 @@ _STRINGS = {
         "mp_opponent": "OPPONENT",
     },
     "ko": {
+        "menu_online_multi": "온라인 멀티 플레이",
         "mp_enter_server": "서버 주소 입력:",
         "mp_connect_hint": "ENTER 키로 접속 (ESC로 취소)",
         "mp_connecting": "서버에 연결 중{dots}",
@@ -55,6 +57,7 @@ _STRINGS = {
         "mp_opponent": "상대",
     },
     "ja": {
+        "menu_online_multi": "オンラインマルチプレイ",
         "mp_enter_server": "サーバーアドレス入力:",
         "mp_connect_hint": "ENTERで接続 (ESCでキャンセル)",
         "mp_connecting": "サーバーに接続中{dots}",
