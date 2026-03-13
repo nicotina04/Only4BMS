@@ -745,9 +745,11 @@ class RhythmGame:
             'max_time': self.engine.max_time,
             'total_notes': len(self.engine.notes),
             'cover_texture': self.assets.cover_texture,
-            'failed': self.course_failed,
+            'failed': False,
             'newly_completed': self.newly_completed
         }
+        if self.extension:
+            stats.update(self.extension.get_extra_stats())
         self.game_renderer.draw_result(stats, t)
 
     def _apply_note_mod(self, notes, mod):
