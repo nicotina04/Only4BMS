@@ -8,10 +8,6 @@ Features:
   - FAIL if HP hits 0.
   - Per-stage Buff / Debuff system (first stage always gives bonus).
   - Audio waveform visualizer for the black-background loading/intermission screens.
-
-Usage (from main.py):
-    from only4bms.game.course_session import CourseSession
-    CourseSession(settings, renderer, window, difficulty, duration_ms, paths).run()
 """
 
 import os
@@ -79,43 +75,36 @@ def _calc_score_and_rank(judgments: dict):
 def _pick_mods(stage_num: int, difficulty: str):
     """Return a list of random modifier tuples based on stage and difficulty."""
     if difficulty == "ORDEAL":
-        # All debuffs EXCEPT mod_speed_fast
         return [m for m in _MODIFIERS if not m[1] and m[0] != "mod_speed_fast"]
-        
+
     if stage_num == 1:
         return [_FIRST_STAGE_MOD]
-    
+
     mods = []
     buffs = [m for m in _MODIFIERS if m[1]]
     debuffs = [m for m in _MODIFIERS if not m[1]]
-    
+
     if difficulty == "BEGINNER":
-        # Always 1-2 buffs, no debuffs
         mods.append(random.choice(buffs))
-        if random.random() < 0.3: # 30% chance for a second buff
+        if random.random() < 0.3:
             m2 = random.choice(buffs)
             if m2 not in mods: mods.append(m2)
-            
+
     elif difficulty == "INTERMEDIATE":
-        # 40% buff, 40% debuff, 20% None
         r = random.random()
         if r < 0.40:
             mods.append(random.choice(buffs))
         elif r < 0.80:
             mods.append(random.choice(debuffs))
-        
-        # Chance for an extra random mod (buff or debuff)
         if random.random() < 0.25:
             extra = random.choice(_MODIFIERS)
             if extra not in mods: mods.append(extra)
-            
+
     elif difficulty == "ADVANCED":
-        # Always at least one debuff
         mods.append(random.choice(debuffs))
-        # Always a second random debuff
         m2 = random.choice(debuffs)
         if m2 not in mods: mods.append(m2)
-    
+
     return mods if mods else None
 
 
@@ -143,7 +132,6 @@ def _calc_hp_delta(judgments: dict, modifiers: list) -> float:
     drain = miss * HP_MISS_DRAIN + good * HP_GOOD_DRAIN
     regen = great * HP_GREAT_REGEN + perfect * HP_PERFECT_REGEN
 
-    # Modifier adjustments
     if modifiers:
         for modifier in modifiers:
             key = modifier[0]
@@ -172,7 +160,6 @@ class _WaveViz:
     def __init__(self, w: int, h: int):
         self.w = w
         self.h = h
-        # Multiple wave layers with different parameters
         self._layers = [
             dict(amp=h * 0.08, freq=2.0, speed=0.6,  phase=0.0, color=(0, 180, 255, 60)),
             dict(amp=h * 0.05, freq=3.5, speed=1.1,  phase=1.0, color=(0, 255, 180, 45)),
@@ -205,16 +192,13 @@ class _WaveViz:
 
 def _draw_hp_bar(surf: pygame.Surface, x: int, y: int, w: int, h: int, ratio: float):
     """Draw a horizontal HP bar onto *surf*.  ratio ∈ [0, 1]."""
-    # Background
     pygame.draw.rect(surf, (40, 10, 10, 200), (x, y, w, h), border_radius=4)
-    # Fill
     fill_w = max(0, int(w * ratio))
     if fill_w:
         r = int(255 * (1.0 - ratio))
         g = int(200 * ratio)
         fill_col = (r, g, 40, 220)
         pygame.draw.rect(surf, fill_col, (x, y, fill_w, h), border_radius=4)
-    # Border + glow
     border_col = (200, 80, 80, 180) if ratio < 0.25 else (80, 200, 120, 160)
     pygame.draw.rect(surf, border_col, (x, y, w, h), 2, border_radius=4)
 
@@ -240,7 +224,6 @@ class CourseSession:
         self.temp_bms_path  = os.path.join(self.template_dir, "temp_course.bms")
         os.makedirs(self.template_dir, exist_ok=True)
 
-        # Progress state
         self.stage_num    = 0
         self.total_score  = 0
         self.best_score   = 0
@@ -248,19 +231,14 @@ class CourseSession:
         self.stage_ranks:  list[str] = []
         self.current_note_mod = "None"
 
-        # HP
         self.hp           = HP_MAX
         self.hp_max       = HP_MAX
-
-        # Current-stage modifier (tuple or None)
         self.current_modifier = None
 
-        # Waveform visualizer
         W, H = window.size
         self._wave = _WaveViz(W, H)
         self._wave_last_t = time.perf_counter()
 
-        # i18n motivation pool
         self._mot_pool = [
             i18n.get("course_mot_1"),
             i18n.get("course_mot_2"),
@@ -281,26 +259,22 @@ class CourseSession:
                 'total_score': self.total_score,
                 'failed': failed
             }
-            # ── CHALLENGE CHECK (Course End) ──
-            # Evaluate course completion logic (e.g., reaching final stage, passing particular course modes)
             newly_done = self.challenge_manager.check_challenges(end_stats)
             if newly_done:
                 print(f"Newly completed challenges: {[c['id'] for c in newly_done]}")
-            
+
             if not failed:
-                # Show final results screen for clear
                 self._draw_final_result(newly_done)
 
     def run(self):
-        from only4bms.game.course_generator import generate_random_course
+        # ── Relative import: course_generator lives in the same mod package ──
+        from .course_generator import generate_random_course
 
         next_desc = ""
         is_first  = True
-        # Modifier for the very first stage (always the HP boost bonus)
         next_modifier = _pick_mods(1, self.difficulty)
 
         while True:
-            # 1. Generate (or re-use already-generated) BMS file
             if is_first:
                 print(f"Course Mode - Generating procedural course ({self.difficulty})...")
                 try:
@@ -312,14 +286,11 @@ class CourseSession:
                     return
                 is_first = False
 
-            # 2. Apply modifier for this stage
             self.current_modifier = next_modifier
             self.stage_num += 1
 
-            # 2a. Loading splash (shows incoming modifier)
             self._draw_loading(next_desc)
 
-            # 3. Parse & play (with speed/window adjustments from modifier)
             try:
                 parser = BMSParser(self.temp_bms_path)
                 notes, bgms, bgas, bmp_map, visual_map, measures = parser.parse()
@@ -336,7 +307,6 @@ class CourseSession:
                 s = dict(self.settings)
                 s["note_mod_idx"] = _mod_idx(self.current_note_mod)
 
-                # Apply speed / hit-window multipliers from modifier
                 if self.current_modifier:
                     for mod in self.current_modifier:
                         _, _, _, s_mult, w_mult, _ = mod
@@ -368,17 +338,12 @@ class CourseSession:
                 self._on_session_end(failed=False)
                 return
 
-            # 4. Score + rank + HP update
             stage_score, stage_rank, acc, j_ex, j_max = _calc_score_and_rank(game.judgments)
 
-            # Use the real-time HP updated in RhythmGame
             hp_before = self.hp
             self.hp   = game.course_hp
             hp_delta  = self.hp - hp_before
 
-            # ── CHALLENGE CHECK (Stage End) ──
-            # Evaluate challenges specific to a particular stage 
-            # (e.g., finishing a stage in Course mode with 100% Full HP)
             newly_done_stage = []
             if self.challenge_manager:
                 stage_stats = game.get_stats()
@@ -387,7 +352,7 @@ class CourseSession:
                 stage_stats['accuracy'] = acc
                 stage_stats['failed'] = (self.hp <= 0)
                 stage_stats['difficulty'] = self.difficulty
-                stage_stats['proceeded_to_next'] = (self.hp > 0)  # True if stage was passed
+                stage_stats['proceeded_to_next'] = (self.hp > 0)
                 newly_done_stage = self.challenge_manager.check_challenges(stage_stats)
 
             self.stage_scores.append(stage_score)
@@ -395,19 +360,17 @@ class CourseSession:
             self.total_score += stage_score
             self.best_score   = max(self.best_score, stage_score)
 
-            # 5. FAIL check
             if self.hp <= 0:
                 self._draw_fail_screen(self.stage_num, stage_score, stage_rank)
                 self._on_session_end(failed=True)
                 return
 
-            # 6. Prepare next stage (note mod + modifier + chart) before intermission
             next_note_mod = _pick_note_mod()
             self.current_note_mod = next_note_mod
             next_modifier = _pick_mods(self.stage_num + 1, self.difficulty)
 
             try:
-                from only4bms.game.course_generator import generate_random_course
+                from .course_generator import generate_random_course
                 _, next_desc = generate_random_course(
                     self.duration_ms, self.temp_bms_path,
                     self.template_dir, difficulty=self.difficulty)
@@ -430,7 +393,6 @@ class CourseSession:
     # ── Internal helpers ─────────────────────────────────────────────────────
 
     def _wave_tick(self, surf: pygame.Surface):
-        """Advance and draw the waveform onto surf."""
         now = time.perf_counter()
         dt  = now - self._wave_last_t
         self._wave_last_t = now
@@ -439,10 +401,8 @@ class CourseSession:
         self._wave.draw(surf, W // 2, H // 2 + int(H * 0.08), W // 2 - 40)
 
     def _modifier_labels(self, modifiers: list) -> list[tuple[str, bool]]:
-        """Return a list of (label, is_buff) for active modifiers."""
         if not modifiers:
             return [(i18n.get("course_no_modifier"), False)]
-        
         results = []
         for mod in modifiers:
             key, is_buff, *_rest, desc_key = mod
@@ -460,13 +420,11 @@ class CourseSession:
         f1   = i18n.font("menu_title", sy, bold=True)
         f_sm = i18n.font("menu_small", sy)
 
-        # Title
         t1 = f1.render(
             i18n.get("loading").format(status=i18n.get("status_gen_bms")),
             True, (0, 255, 200))
         surf.blit(t1, ((W - t1.get_width()) // 2, H // 2 - int(sy * 40)))
 
-        # HP bar
         hp_ratio = self.hp / self.hp_max
         bar_w = int(W * 0.45)
         bar_h = int(sy * 18)
@@ -476,7 +434,6 @@ class CourseSession:
         hp_lab = f_sm.render(f"HP  {int(self.hp)}/{int(self.hp_max)}", True, (200, 200, 200))
         surf.blit(hp_lab, (bar_x, bar_y - int(sy * 22)))
 
-        # Modifier badges (plural)
         if self.stage_num > 0 and self.current_modifier:
             labels = self._modifier_labels(self.current_modifier)
             y_mb = bar_y + bar_h + int(sy * 12)
@@ -487,7 +444,6 @@ class CourseSession:
                 surf.blit(m_surf, ((W - m_surf.get_width()) // 2, y_mb))
                 y_mb += sy * 24
 
-        # Note mod
         if self.stage_num > 0:
             col = (180, 100, 255) if self.current_note_mod != "None" else (100, 120, 100)
             nm_text = i18n.get("course_note_mod_none") if self.current_note_mod == "None" else i18n.get("course_note_mod").format(mod=self.current_note_mod)
@@ -510,12 +466,11 @@ class CourseSession:
 
         running   = True
         continue_ = True
-        
+
         start_t = time.perf_counter()
         _toast_start_t = None if not newly_completed else start_t
 
         while running:
-            # ── Timing for waveform ─────────────────────────────────────────
             surf = pygame.Surface((W, H), pygame.SRCALPHA)
             surf.fill((15, 15, 25))
 
@@ -529,28 +484,23 @@ class CourseSession:
             def blit_cx(surf_s, y):
                 surf.blit(surf_s, ((W - surf_s.get_width()) // 2, int(y)))
 
-            # STAGE N CLEAR [RANK]
             blit_cx(f_title.render(
                 i18n.get("course_stage_clear").format(n=stage_num, rank=stage_rank),
                 True, (0, 255, 200)), H * 0.09)
 
-            # Score row
             blit_cx(f_body.render(
                 i18n.get("course_stat_row").format(score=stage_score, total=self.total_score, best=self.best_score),
                 True, (255, 230, 100)), H * 0.22)
 
-            # Accuracy + judgments
             blit_cx(f_sm.render(
                 i18n.get("course_acc_row").format(
                     acc=acc, p=judgments.get('PERFECT',0), g=judgments.get('GREAT',0), m=judgments.get('MISS',0)),
                 True, (180, 220, 180)), H * 0.32)
 
-            # ── HP bar ──────────────────────────────────────────────────────
             bar_w = int(W * 0.40)
             bar_h = int(sy * 16)
             bar_x = (W - bar_w) // 2
             bar_y = int(H * 0.405)
-            # HP delta label
             if hp_delta >= 0:
                 delta_str = f"HP  {int(self.hp)}/{int(self.hp_max)}  (+{hp_delta:.0f})"
                 delta_col = (100, 255, 130)
@@ -561,13 +511,10 @@ class CourseSession:
             surf.blit(hp_info, ((W - hp_info.get_width()) // 2, bar_y - int(sy * 22)))
             _draw_hp_bar(surf, bar_x, bar_y, bar_w, bar_h, hp_ratio)
 
-            # Motivational quote
             blit_cx(f_body.render(mot, True, (255, 180, 80)), H * 0.50)
 
-            # ── NEXT STAGE ──────────────────────────────────────────────────
             blit_cx(f_sm.render(i18n.get("course_next_stage_label"), True, (150, 150, 200)), H * 0.575)
 
-            # Next desc (truncate to 88% width)
             desc = next_desc
             max_w = int(W * 0.88)
             while f_body.size(desc)[0] > max_w and len(desc) > 8:
@@ -576,7 +523,6 @@ class CourseSession:
                 desc += "..."
             blit_cx(f_body.render(desc, True, (200, 200, 255)), H * 0.635)
 
-            # Next modifier banners (plural)
             next_labels = self._modifier_labels(next_modifier)
             y_nb = H * 0.70
             for label_txt, is_buff in next_labels:
@@ -588,21 +534,17 @@ class CourseSession:
                 blit_cx(f_sm.render(banner_text, True, col), y_nb)
                 y_nb += sy * 24
 
-            # Next note mod badge
             note_mod_col   = (200, 80, 255) if next_note_mod != "None" else (100, 140, 100)
             nm_label_val = next_note_mod.upper() if next_note_mod != "None" else i18n.get("none").upper()
             note_mod_label = i18n.get("course_note_mod").format(mod=nm_label_val)
             blit_cx(f_xs.render(note_mod_label, True, note_mod_col), H * 0.78)
 
-            # Continue hint
             blit_cx(f_sm.render(i18n.get("course_continue_hint"), True, (120, 120, 130)), H * 0.90)
 
-            # ── Challenge Toast Overlay ──
             if newly_completed and _toast_start_t:
                 elapsed = time.perf_counter() - _toast_start_t
                 duration = 4.0
                 if elapsed < duration:
-                    # Transitions
                     alpha = 255
                     y_toast_off = 0
                     if elapsed < 0.5:
@@ -614,31 +556,26 @@ class CourseSession:
 
                     tw, th = int(sx * 350), int(sy * (85 + len(newly_completed) * 30))
                     tx, ty = (W - tw) // 2, int(H * 0.25) + y_toast_off
-                    
-                    # Panel
+
                     t_surf = pygame.Surface((tw, th), pygame.SRCALPHA)
                     pygame.draw.rect(t_surf, (30, 30, 45, int(230 * (alpha/255))), (0, 0, tw, th), border_radius=8)
                     pygame.draw.rect(t_surf, (255, 200, 0, alpha), (0, 0, tw, th), 2, border_radius=8)
-                    
-                    # Toast Title
+
                     tt_tex = f_body.render(i18n.get("new_challenge_toast"), True, (255, 220, 50))
                     t_surf.blit(tt_tex, ((tw - tt_tex.get_width()) // 2, int(sy * 10)))
-                    
-                    # Challenge list
+
                     for idx, ch in enumerate(newly_completed):
                         c_name = i18n.get(f"ch_{ch['id']}_title")
                         c_surf = f_sm.render(f"{idx+1}. {c_name}", True, (255, 255, 255))
                         t_surf.blit(c_surf, (int(sx * 30), int(sy * (50 + idx * 30))))
-                    
+
                     surf.blit(t_surf, (tx, ty))
 
-            # ── Present ─────────────────────────────────────────────────────
             self.renderer.clear()
             tex = Texture.from_surface(self.renderer, surf)
             self.renderer.blit(tex, pygame.Rect(0, 0, W, H))
             self.renderer.present()
 
-            # ── Events ──────────────────────────────────────────────────────
             for e in pygame.event.get():
                 if e.type == pygame.QUIT:
                     running    = False
@@ -656,18 +593,16 @@ class CourseSession:
                         running   = False
                         continue_ = False
 
-            time.sleep(0.016)  # ~60fps cap for intermission
+            time.sleep(0.016)
 
         return continue_
 
     def _draw_fail_screen(self, stage_num: int, last_score: int, last_rank: str):
-        """Show a FAIL / GAME OVER screen and wait for input."""
         W, H = self.window.size
         sy   = H / 600.0
 
         running = True
         while running:
-            # Re-use wave ticking logic from intermission
             surf = pygame.Surface((W, H), pygame.SRCALPHA)
             surf.fill((20, 5, 5))
             self._wave_tick(surf)
@@ -704,7 +639,6 @@ class CourseSession:
             time.sleep(0.016)
 
     def _draw_final_result(self, newly_completed=None):
-        """Show a FINAL CLEAR / SUMMARY screen when completing a course."""
         W, H = self.window.size
         sy   = H / 600.0
         sx   = W / 800.0
@@ -731,7 +665,6 @@ class CourseSession:
                 True, (255, 230, 100)), H * 0.45)
             blit_cx(f_sm.render(i18n.get("course_fail_hint"), True, (150, 150, 160)), H * 0.85)
 
-            # ── Challenge Toast Summary ──
             if newly_completed and _toast_start_t:
                 elapsed = time.perf_counter() - _toast_start_t
                 duration = 5.0
@@ -747,19 +680,19 @@ class CourseSession:
 
                     tw, th = int(sx * 350), int(sy * (85 + len(newly_completed) * 30))
                     tx, ty = (W - tw) // 2, int(H * 0.30) + y_toast_off
-                    
+
                     t_surf = pygame.Surface((tw, th), pygame.SRCALPHA)
                     pygame.draw.rect(t_surf, (30, 30, 45, int(230 * (alpha/255))), (0, 0, tw, th), border_radius=8)
                     pygame.draw.rect(t_surf, (255, 200, 0, alpha), (0, 0, tw, th), 2, border_radius=8)
-                    
+
                     tt_tex = f_body.render(i18n.get("new_challenge_toast"), True, (255, 220, 50))
                     t_surf.blit(tt_tex, ((tw - tt_tex.get_width()) // 2, int(sy * 10)))
-                    
+
                     for idx, ch in enumerate(newly_completed):
                         c_name = i18n.get(f"ch_{ch['id']}_title")
                         c_surf = f_sm.render(f"{idx+1}. {c_name}", True, (255, 255, 255))
                         t_surf.blit(c_surf, (int(sx * 30), int(sy * (50 + idx * 30))))
-                    
+
                     surf.blit(t_surf, (tx, ty))
 
             self.renderer.clear()

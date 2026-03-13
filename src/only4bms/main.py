@@ -333,9 +333,20 @@ def main():
     # Initialize Challenge Manager
     challenge_manager = ChallengeManager()
 
+    # Discover and load mods from the mods/ directory
+    from only4bms.mod_loader import discover_mods
+    mods = discover_mods()
+    mod_map = {mod.action: mod for mod in mods}
+
+    # Shared context passed into every mod's run() call
+    _mod_ctx = {
+        "init_mixer_fn": _init_mixer,
+        "challenge_manager": challenge_manager,
+    }
+
     # Main loop
     while True:
-        menu_action = MainMenu(settings, renderer=renderer, window=window).run()
+        menu_action = MainMenu(settings, renderer=renderer, window=window, mods=mods).run()
 
         if menu_action == "QUIT":
             break
@@ -344,86 +355,15 @@ def main():
             SettingsMenu(settings, renderer=renderer, window=window).run()
             save_settings(settings)
             continue
-        
+
         if menu_action == "CHALLENGE":
             from only4bms.ui.challenge_menu import ChallengeMenu
             ChallengeMenu(settings, renderer=renderer, window=window).run()
             continue
 
-        if menu_action == "COURSE":
-            from only4bms.ui.course_menu import CourseMenu
-            course_res = CourseMenu(settings, renderer=renderer, window=window).run()
-            if course_res and course_res[0] == "START":
-                difficulty, duration_ms = course_res[1], course_res[2]
-                from only4bms.game.course_session import CourseSession
-                CourseSession(
-                    settings, renderer, window,
-                    difficulty, duration_ms, paths,
-                    init_mixer_fn=_init_mixer,
-                    challenge_manager=challenge_manager,
-                ).run()
-            continue
-
-        if menu_action == "ONLINE_MULTI":
-            from only4bms.ui.multiplayer_menu import MultiplayerMenu
-            from only4bms.core.network_manager import NetworkManager
-            
-            while True:
-                mp_menu = MultiplayerMenu(settings, renderer=renderer, window=window)
-                res = mp_menu.run()
-                action, selected_song = res
-                
-                if action in ("QUIT", "MENU") or not action:
-                    break
-                    
-                if action == "START_MULTI" and selected_song:
-                    _init_mixer(settings)
-                    mode = 'online_multi'
-                    print(f"Loading {selected_song}...")
-                    parser = BMSParser(selected_song)
-                    notes, bgms, bgas, bmp_map, visual_timing_map, measures = parser.parse()
-
-                    if not notes and not bgms:
-                        print("No notes or bgm parsed from file.")
-                        break
-
-                    metadata = {
-                        "artist": parser.artist,
-                        "bpm": parser.bpm,
-                        "level": parser.playlevel,
-                        "genre": parser.genre,
-                        "notes": parser.total_notes,
-                        "stagefile": parser.stagefile,
-                        "banner": parser.banner,
-                        "total": parser.total,
-                        "lanes_compressed": parser.lanes_compressed,
-                    }
-                    match_settings = NetworkManager().match_settings or {}
-                    
-                    # Create a copy of user settings to override with match_settings
-                    match_settings_obj = settings.copy()
-                    
-                    # Override Speed
-                    if 'speed' in match_settings:
-                        match_settings_obj['speed'] = float(match_settings['speed'])
-                        
-                    # Handle Modifiers, Buffs, Debuffs
-                    p1_modifiers = set(match_settings.get('modifiers', []))
-                    p1_buffs = set(match_settings.get('buffs', []))
-                    p1_debuffs = set(match_settings.get('debuffs', []))
-
-                    game = RhythmGame(
-                        notes, bgms, bgas, parser.wav_map, bmp_map,
-                        parser.title, match_settings_obj, visual_timing_map=visual_timing_map, measures=measures, mode=mode, metadata=metadata,
-                        renderer=renderer, window=window,
-                        ai_difficulty='normal', note_mod='None',
-                        challenge_manager=challenge_manager,
-                        p1_modifiers=p1_modifiers,
-                        p1_buffs=p1_buffs,
-                        p1_debuffs=p1_debuffs
-                    )
-                    game.run()
-                    # Loop continues, mp_menu will be recreated in LOBBY state
+        # ── Mod dispatch ─────────────────────────────────────────────────
+        if menu_action in mod_map:
+            mod_map[menu_action].run_fn(settings, renderer, window, **_mod_ctx)
             continue
 
         if menu_action in ("SINGLE", "AI_MULTI"):

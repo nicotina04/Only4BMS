@@ -50,3 +50,6 @@ if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
 else:
     # Development: path to src/only4bms/ai
     AI_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ai")
+
+# Mods Directory (next to executable in packaged mode, project root in development)
+MODS_DIR = os.path.join(BASE_PATH, "mods")
