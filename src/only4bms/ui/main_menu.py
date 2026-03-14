@@ -148,7 +148,8 @@ class MainMenu:
         n = len(self.options)
 
         # Approximate title height to find where the panel starts
-        title_h_approx = self._s(48)
+        # menu_title font size is 76 base units (see i18n.py FONT_SIZES)
+        title_h_approx = self._s(76)
         title_bottom = self._s(_TITLE_Y_BASE) + title_h_approx + self._s(_TITLE_MARGIN)
 
         available_h = self.h - title_bottom - self._s(50)  # reserve footer
