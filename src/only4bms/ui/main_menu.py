@@ -34,12 +34,13 @@ class MainMenu:
         ----------
         mods : list[ModInfo] | None
             Discovered mods from mod_loader.discover_mods().
-            Each mod entry is inserted between AI_MULTI and SETTINGS.
+            Shown in a popup overlay when the player selects MODS.
         """
         from pygame._sdl2.video import Texture
         self.settings = settings
         self.renderer = renderer
         self.window = window
+        self.mods = mods or []
 
         self.w, self.h = self.window.size
         self.sx, self.sy = self.w / BASE_W, self.h / BASE_H
@@ -54,18 +55,15 @@ class MainMenu:
         self.small_font = _i18n.font("menu_small", self.sy)
 
         # ── Build options list ──────────────────────────────────────────
-        # is_mod[i] = True means the i-th option is a user mod (purple accent)
         self.options = [
             (lambda: _t("menu_single"), "SINGLE"),
             (lambda: _t("menu_ai_multi"), "AI_MULTI"),
         ]
         self.is_mod = [False, False]
 
-        if mods:
-            for mod in mods:
-                name_callable = mod.name_fn if mod.name_fn else (lambda n=mod.name: n)
-                self.options.append((name_callable, mod.action))
-                self.is_mod.append(True)
+        if self.mods:
+            self.options.append((lambda: _t("menu_mods"), "MODS"))
+            self.is_mod.append(True)
 
         self.options += [
             (lambda: _t("menu_challenge"), "CHALLENGE"),
@@ -81,6 +79,11 @@ class MainMenu:
         # Overlays
         self.show_quit_confirm = False
         self._quit_buttons = []
+
+        # Mods popup
+        self.show_mods_popup = False
+        self.mods_popup_index = 0
+        self._mod_item_rects = []
 
         # Input debouncing
         self.ignore_confirm = (pygame.key.get_pressed()[pygame.K_RETURN] or
@@ -149,7 +152,7 @@ class MainMenu:
         title_bottom = self._s(_TITLE_Y_BASE) + title_h_approx + self._s(_TITLE_MARGIN)
 
         available_h = self.h - title_bottom - self._s(50)  # reserve footer
-        # Shrink spacing if many mods, min 40px
+        # Shrink spacing if many items, min 40px
         item_spacing = max(self._s(40), min(self._s(_ITEM_SPACING_BASE),
                                             (available_h - self._s(_PANEL_PAD_TOP + _PANEL_PAD_BOT)) // n))
 
@@ -199,6 +202,10 @@ class MainMenu:
                 if event.key in (pygame.K_RETURN, pygame.K_SPACE):
                     self.ignore_confirm = False
             elif event.type == pygame.KEYDOWN:
+                if self.show_mods_popup:
+                    self._handle_mods_popup_key(event.key)
+                    continue
+
                 if self.show_quit_confirm:
                     if event.key == pygame.K_RETURN:
                         self.action = "QUIT"
@@ -218,6 +225,13 @@ class MainMenu:
                     self.show_quit_confirm = True
 
             elif event.type == pygame.JOYBUTTONDOWN:
+                if self.show_mods_popup:
+                    if event.button == 0:
+                        self._launch_mod(self.mods_popup_index)
+                    elif event.button == 1:
+                        self.show_mods_popup = False
+                    continue
+
                 if self.show_quit_confirm:
                     if event.button == 0:
                         self.action = "QUIT"
@@ -231,6 +245,13 @@ class MainMenu:
                     self.show_quit_confirm = True
 
             elif event.type == pygame.JOYHATMOTION:
+                if self.show_mods_popup:
+                    vx, vy = event.value
+                    if vy == 1:
+                        self.mods_popup_index = (self.mods_popup_index - 1) % len(self.mods)
+                    elif vy == -1:
+                        self.mods_popup_index = (self.mods_popup_index + 1) % len(self.mods)
+                    continue
                 if self.show_quit_confirm:
                     continue
                 vx, vy = event.value
@@ -240,21 +261,64 @@ class MainMenu:
                     self.selected_index = (self.selected_index + 1) % len(self.options)
 
             elif event.type == pygame.MOUSEMOTION:
+                if self.show_mods_popup:
+                    self._update_mods_hover(*event.pos)
+                    continue
                 if self.show_quit_confirm:
                     continue
                 self._update_hover(*event.pos)
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mx, my = event.pos
+                if self.show_mods_popup:
+                    self._handle_mods_popup_click(mx, my)
+                    continue
                 if self.show_quit_confirm:
                     self._handle_quit_click(mx, my)
                     continue
                 if self._update_hover(mx, my):
                     self._activate(self.options[self.selected_index][1])
 
+    def _handle_mods_popup_key(self, key):
+        if key == pygame.K_ESCAPE:
+            self.show_mods_popup = False
+        elif key == pygame.K_UP:
+            self.mods_popup_index = (self.mods_popup_index - 1) % len(self.mods)
+        elif key == pygame.K_DOWN:
+            self.mods_popup_index = (self.mods_popup_index + 1) % len(self.mods)
+        elif key in (pygame.K_RETURN, pygame.K_SPACE):
+            self._launch_mod(self.mods_popup_index)
+
+    def _handle_mods_popup_click(self, mx, my):
+        # Click outside popup closes it
+        popup_rect = self._mods_popup_rect()
+        if not popup_rect.collidepoint(mx, my):
+            self.show_mods_popup = False
+            return
+        for i, rect in enumerate(self._mod_item_rects):
+            if rect.collidepoint(mx, my):
+                if self.mods_popup_index == i:
+                    self._launch_mod(i)
+                else:
+                    self.mods_popup_index = i
+                return
+
+    def _update_mods_hover(self, mx, my):
+        for i, rect in enumerate(self._mod_item_rects):
+            if rect.collidepoint(mx, my):
+                self.mods_popup_index = i
+                return
+
+    def _launch_mod(self, index):
+        self.action = self.mods[index].action
+        self.running = False
+
     def _activate(self, action):
         if action == "QUIT":
             self.show_quit_confirm = True
+        elif action == "MODS":
+            self.mods_popup_index = 0
+            self.show_mods_popup = True
         else:
             self.action = action
             self.running = False
@@ -319,6 +383,71 @@ class MainMenu:
             self._quit_buttons.append((btn_rect, action))
             bx += self._s(120)
 
+    def _mods_popup_rect(self):
+        popup_w = self._s(440)
+        popup_h = self._s(80 + max(len(self.mods), 1) * 54 + 52)
+        popup_x = (self.w - popup_w) // 2
+        popup_y = (self.h - popup_h) // 2
+        return pygame.Rect(popup_x, popup_y, popup_w, popup_h)
+
+    def _draw_mods_popup(self):
+        self._draw_overlay(180)
+        mx, my = pygame.mouse.get_pos()
+
+        popup_rect = self._mods_popup_rect()
+        px, py, pw, ph = popup_rect.x, popup_rect.y, popup_rect.width, popup_rect.height
+
+        # Panel background
+        panel_surf = pygame.Surface((pw, ph), pygame.SRCALPHA)
+        panel_surf.fill(COLOR_PANEL_BG)
+        self.screen.blit(panel_surf, (px, py))
+        pygame.draw.rect(self.screen, COLOR_MOD_ACCENT, (px, py, pw, ph), 2, border_radius=10)
+
+        # Title bar
+        title_surf = self.font.render(_t("menu_mods"), True, COLOR_MOD_ACCENT)
+        self.screen.blit(title_surf, title_surf.get_rect(centerx=px + pw // 2, top=py + self._s(14)))
+
+        # Divider
+        div_y = py + self._s(46)
+        pygame.draw.line(self.screen, (80, 50, 120), (px + self._s(16), div_y), (px + pw - self._s(16), div_y), 1)
+
+        # Mod list items
+        item_h = self._s(48)
+        item_spacing = self._s(54)
+        list_top = div_y + self._s(8)
+        self._mod_item_rects = []
+
+        for i, mod in enumerate(self.mods):
+            name_fn = mod.name_fn if mod.name_fn else (lambda n=mod.name: n)
+            item_rect = pygame.Rect(px + self._s(12), list_top + i * item_spacing,
+                                    pw - self._s(24), item_h)
+            self._mod_item_rects.append(item_rect)
+
+            if i == self.mods_popup_index:
+                pygame.draw.rect(self.screen, COLOR_MOD_SELECTED_BG, item_rect, border_radius=6)
+                pygame.draw.rect(self.screen, COLOR_MOD_ACCENT, item_rect, 1, border_radius=6)
+                txt_color = COLOR_MOD_ACCENT
+            elif item_rect.collidepoint(mx, my):
+                pygame.draw.rect(self.screen, COLOR_MOD_HOVERED_BG, item_rect, border_radius=6)
+                txt_color = COLOR_TEXT_PRIMARY
+            else:
+                txt_color = COLOR_TEXT_SECONDARY
+
+            label_surf = self.font.render(name_fn(), True, txt_color)
+            self.screen.blit(label_surf, label_surf.get_rect(
+                centery=item_rect.centery,
+                centerx=item_rect.centerx,
+            ))
+
+        # Hint text at bottom (small, dim)
+        hint_text = _t("mods_popup_hint")
+        hint_surf = self.small_font.render(hint_text, True, (80, 60, 110))
+        hint_y = py + ph - self._s(30)
+        pygame.draw.line(self.screen, (50, 35, 75),
+                         (px + self._s(16), hint_y - self._s(6)),
+                         (px + pw - self._s(16), hint_y - self._s(6)), 1)
+        self.screen.blit(hint_surf, hint_surf.get_rect(centerx=px + pw // 2, top=hint_y))
+
     def _draw(self):
         # 1. Dark gradient background
         for y in range(self.h):
@@ -382,6 +511,8 @@ class MainMenu:
 
         if self.show_quit_confirm:
             self._draw_quit_confirm()
+        elif self.show_mods_popup:
+            self._draw_mods_popup()
 
     # ── Background animation ──────────────────────────────────────────────
 
